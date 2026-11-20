@@ -152,116 +152,116 @@ erDiagram
 
     users {
         uuid id PK
-        varchar email UK
-        varchar nickname
-        varchar password "해시 저장"
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz deleted_at "논리 삭제, 1일 뒤 배치로 물리 삭제"
+        varchar email UK "NN"
+        varchar nickname "NN, 2~20자, 중복 허용"
+        varchar password "NN, 해시 저장 (길이 60 이상)"
+        timestamptz created_at "NN"
+        timestamptz updated_at "NN"
+        timestamptz deleted_at "nullable, 논리 삭제 1일 뒤 배치로 물리 삭제"
     }
 
     books {
         uuid id PK
-        varchar title
-        varchar author
-        text description
-        varchar publisher
-        date published_date
+        varchar title "NN"
+        varchar author "NN"
+        text description "NN"
+        varchar publisher "NN"
+        date published_date "NN"
         varchar isbn UK "nullable, 수정 불가"
         varchar thumbnail_url "nullable, S3"
-        int review_count "집계 컬럼"
-        double rating "집계 컬럼, 평균 평점"
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz deleted_at
+        int review_count "NN, DEFAULT 0, 0 이상"
+        double rating "NN, DEFAULT 0, 평균 평점"
+        timestamptz created_at "NN"
+        timestamptz updated_at "NN"
+        timestamptz deleted_at "nullable"
     }
 
     reviews {
         uuid id PK
-        uuid book_id FK
-        uuid user_id FK "book_id + user_id 부분 유니크 (deleted_at IS NULL)"
-        text content
-        int rating
-        int like_count "집계 컬럼"
-        int comment_count "집계 컬럼"
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz deleted_at
+        uuid book_id FK "NN, ON DELETE CASCADE"
+        uuid user_id FK "NN, ON DELETE CASCADE, book_id + user_id 부분 유니크 (deleted_at IS NULL)"
+        text content "NN"
+        int rating "NN, CHECK 1~5"
+        int like_count "NN, DEFAULT 0, 0 이상"
+        int comment_count "NN, DEFAULT 0, 0 이상"
+        timestamptz created_at "NN"
+        timestamptz updated_at "NN"
+        timestamptz deleted_at "nullable"
     }
 
     review_likes {
         uuid id PK
-        uuid review_id FK
-        uuid user_id FK "review_id + user_id 유니크"
-        timestamptz created_at "기간별 집계 기준"
+        uuid review_id FK "NN, ON DELETE CASCADE"
+        uuid user_id FK "NN, ON DELETE CASCADE, review_id + user_id 유니크"
+        timestamptz created_at "NN, 기간별 집계 기준"
     }
 
     comments {
         uuid id PK
-        uuid review_id FK
-        uuid user_id FK
-        text content
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz deleted_at
+        uuid review_id FK "NN, ON DELETE CASCADE"
+        uuid user_id FK "NN, ON DELETE CASCADE"
+        text content "NN"
+        timestamptz created_at "NN"
+        timestamptz updated_at "NN"
+        timestamptz deleted_at "nullable"
     }
 
     notifications {
         uuid id PK
-        uuid user_id FK "수신자 = 리뷰 작성자"
-        uuid review_id FK
-        varchar message
-        boolean confirmed
-        timestamptz created_at
-        timestamptz updated_at "확인 시각, 1주일 뒤 배치 삭제"
+        uuid user_id FK "NN, ON DELETE CASCADE, 수신자 = 리뷰 작성자"
+        uuid review_id FK "NN, ON DELETE CASCADE"
+        varchar message "NN"
+        boolean confirmed "NN, DEFAULT false"
+        timestamptz created_at "NN"
+        timestamptz updated_at "NN, 확인 시각, 1주일 뒤 배치 삭제"
     }
 
     popular_books {
         uuid id PK
-        uuid book_id "FK 없음"
-        varchar title "복사"
-        varchar author "복사"
-        varchar thumbnail_url "복사"
-        varchar period "DAILY, WEEKLY, MONTHLY, ALL_TIME"
-        date base_date "period + base_date + book_id 유니크"
-        bigint rank
-        double score
-        bigint review_count "기간 내"
-        double rating "기간 내 평균"
-        timestamptz created_at
+        uuid book_id "NN, FK 없음"
+        varchar title "NN, 복사"
+        varchar author "NN, 복사"
+        varchar thumbnail_url "nullable, 복사"
+        varchar period "NN, CHECK DAILY, WEEKLY, MONTHLY, ALL_TIME"
+        date base_date "NN, period + base_date + book_id 유니크"
+        bigint rank "NN"
+        double score "NN"
+        bigint review_count "NN, 기간 내"
+        double rating "NN, 기간 내 평균"
+        timestamptz created_at "NN"
     }
 
     popular_reviews {
         uuid id PK
-        uuid review_id "FK 없음"
-        uuid book_id "FK 없음"
-        varchar book_title "복사"
-        varchar book_thumbnail_url "복사"
-        uuid user_id "FK 없음"
-        varchar user_nickname "복사"
-        text review_content "복사"
-        double review_rating "복사"
-        varchar period
-        date base_date "period + base_date + review_id 유니크"
-        bigint rank
-        double score
-        bigint like_count "기간 내"
-        bigint comment_count "기간 내"
-        timestamptz created_at
+        uuid review_id "NN, FK 없음"
+        uuid book_id "NN, FK 없음"
+        varchar book_title "NN, 복사"
+        varchar book_thumbnail_url "nullable, 복사"
+        uuid user_id "NN, FK 없음"
+        varchar user_nickname "NN, 복사"
+        text review_content "NN, 복사"
+        double review_rating "NN, 복사"
+        varchar period "NN, CHECK DAILY, WEEKLY, MONTHLY, ALL_TIME"
+        date base_date "NN, period + base_date + review_id 유니크"
+        bigint rank "NN"
+        double score "NN"
+        bigint like_count "NN, 기간 내"
+        bigint comment_count "NN, 기간 내"
+        timestamptz created_at "NN"
     }
 
     power_users {
         uuid id PK
-        uuid user_id "FK 없음"
-        varchar nickname "복사"
-        varchar period
-        date base_date "period + base_date + user_id 유니크"
-        bigint rank
-        double score
-        double review_score_sum
-        bigint like_count "기간 내"
-        bigint comment_count "기간 내"
-        timestamptz created_at
+        uuid user_id "NN, FK 없음"
+        varchar nickname "NN, 복사"
+        varchar period "NN, CHECK DAILY, WEEKLY, MONTHLY, ALL_TIME"
+        date base_date "NN, period + base_date + user_id 유니크"
+        bigint rank "NN"
+        double score "NN"
+        double review_score_sum "NN"
+        bigint like_count "NN, 기간 내"
+        bigint comment_count "NN, 기간 내"
+        timestamptz created_at "NN"
     }
 
 ```
