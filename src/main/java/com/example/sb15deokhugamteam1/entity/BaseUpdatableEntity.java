@@ -18,8 +18,4 @@ public class BaseUpdatableEntity extends BaseEntity{
     protected BaseUpdatableEntity(){
 
     }
-
-    /*public void setUpdatedAt() {
-        this.updatedAt = Instant.now();
-    }*/
 }
