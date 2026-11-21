@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16 #Postgres 16버전으로 해놧음
+    container_name: deokhugam-postgres
+    environment:
+      POSTGRES_DB: deokhugam_db #DB는 이 이름으로 가정
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    # 이건 지금 제 컴퓨터가 docker로 따로 postgres(5432포트 사용중)를 돌리고 있어서 5433 포트로 열게끔 했는데 바꿔도 됩니다
+    # application.yaml도 포트 바꿔야 함
+    ports:
+      - "5433:5432"
+  app:
+    build: .
+    container_name: deokhugam-app
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:8080"
