@@ -1,31 +1,31 @@
 # {팀 이름}
 
-[팀 협업 문서](https://example.com/team-notion)
+[팀 협업 문서]([https://example.com/team-notion](https://app.notion.com/p/cd5d399348a58333bcaf01e2282c83ff))
 
 ## 팀원 구성
 
-[{팀원 1 이름}](https://github.com/github-id-1)  
-[{팀원 2 이름}](https://github.com/github-id-2)  
-[{팀원 3 이름}](https://github.com/github-id-3)  
-[{팀원 4 이름}](https://github.com/github-id-4)  
-[{팀원 5 이름}](https://github.com/github-id-5)  
-[{팀원 6 이름}](https://github.com/github-id-6)
+[{팀장 김민규}](https://github.com/github-id-1)  
+[{팀원 박석규}](https://github.com/github-id-2)  
+[{팀원 박종우}](https://github.com/github-id-3)  
+[{팀원 김한민}](https://github.com/github-id-4)  
+[{팀원 이주영}](https://github.com/github-id-5)  
+[{팀원 전현진}]([https://github.com/github-id-6](https://github.com/ginkorn))
 
 ---
 
 ## 프로젝트 소개
 
-- **프로젝트명**: {프로젝트 이름}
-- **프로젝트 설명**: {누가 어떤 문제를 해결하기 위해 사용하는 서비스인지 한두 문장으로 작성}
-- **프로젝트 기간**: YYYY.MM.DD ~ YYYY.MM.DD
+- **프로젝트명**: {덕후감}
+- **프로젝트 설명**: {책을 좋아하는 사람들이 리뷰와 댓글로 감상을 나누는 도서 리뷰 커뮤니티입니다. 책 뒷면 사진만 올리면 OCR로 ISBN을 인식해 도서 정보를 자동으로 채워 주고, 인기 도서·인기 리뷰·파워 유저 랭킹을 기간별로 보여 줍니다.}
+- **프로젝트 기간**: 2026.11.20 ~ 2026.12.DD
 
 ---
 
 ## 기술 스택
 
-- **Backend**: Java, Spring Boot, Spring Data JPA
-- **Database**: {사용한 데이터베이스}
-- **Infra / CI·CD**: {사용한 배포 및 자동화 도구}
+- **Backend**: Java 17, Spring Boot 4.1, Spring Data JPA, Bean Validation, Lombok
+- **Database**: {PostgreSQL (pg_trgm 검색 인덱스, 부분 유니크 인덱스)}
+- **Infra / CI·CD**: {Docker, AWS ECS·ECR, GitHub Actions}
 - **공동 도구**: Git, GitHub, Notion, Discord
 
 ---
