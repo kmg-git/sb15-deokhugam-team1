@@ -9,7 +9,7 @@
 [{팀원 박종우}](https://github.com/github-id-3)  
 [{팀원 김한민}](https://github.com/github-id-4)  
 [{팀원 이주영}](https://github.com/github-id-5)  
-[{팀원 전현진}]([https://github.com/github-id-6](https://github.com/ginkorn))
+[{팀원 전현진}](https://github.com/github-id-6](https://github.com/ginkorn))
 
 ---
 
