@@ -4,12 +4,12 @@
 
 ## 팀원 구성
 
-[{팀장 김민규}](https://github.com/github-id-1)  
+[팀장 김민규](https://github.com/kmg-git)  
 [{팀원 박석규}](https://github.com/github-id-2)  
 [{팀원 박종우}](https://github.com/github-id-3)  
 [{팀원 김한민}](https://github.com/github-id-4)  
 [{팀원 이주영}](https://github.com/github-id-5)  
-[{팀원 전현진}](https://github.com/github/ginkorn)
+[팀원 전현진](https://github.com/ginkorn)
 
 ---
 
@@ -27,6 +27,21 @@
 - **Database**: {PostgreSQL (pg_trgm 검색 인덱스, 부분 유니크 인덱스)}
 - **Infra / CI·CD**: {Docker, AWS ECS·ECR, GitHub Actions}
 - **공동 도구**: Git, GitHub, Notion, Discord
+
+---
+
+### 주요 기능
+
+| 도메인 | 기능 |
+|---|---|
+| 사용자 | 회원가입·로그인, 정보 수정, 논리 삭제 후 1일 뒤 배치로 물리 삭제 |
+| 도서 | 도서 CRUD, 카카오 API로 ISBN 기반 정보 조회, OCR로 ISBN 인식, S3 표지 이미지, 키워드 검색·정렬 |
+| 리뷰 | 리뷰 CRUD(도서당 1인 1리뷰), 좋아요, 검색·정렬 |
+| 댓글 | 리뷰별 댓글 CRUD |
+| 알림 | 좋아요·댓글·인기 리뷰 진입 알림, 읽음 처리, 확인 1주일 지난 알림 배치 삭제 |
+| 대시보드 | 기간별(일간·주간·월간·전체) 인기 도서, 인기 리뷰, 파워 유저 랭킹 배치 집계 |
+
+모든 목록 API는 커서 기반 페이지네이션(`nextCursor`, `nextAfter`, `hasNext`)을 사용합니다.
 
 ---
 
