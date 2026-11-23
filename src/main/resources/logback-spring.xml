@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- 로그 한 줄마다 요청id, ip가 찍힘. MDC값이 없는 경우는 '-'로 표시-->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:--}]
+[%X{clientIp:--}] %logger{36} - %msg%n"/>
+
+    <!-- 환경변수 또는 시스템 프로퍼티 LOG_DIR로 바꿀 수 있고, 없으면 ./logs -->
+    <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 날짜별 파일: deokhugam.log(오늘), deokhugam.2026-11-19.log(어제)... 30일 보관 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/deokhugam.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/deokhugam.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 개발/테스트: 자세히(콘솔만) -->
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.example.sb15deokhugamteam1" level="DEBUG"/>
+    </springProfile>
+
+    <!-- 배포(SPRING_PROFILES_ACTIVE=prod): 중요한 것만(INFO 이상), 콘솔 + 날짜별 파일 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+</configuration>
