@@ -3,6 +3,7 @@ package com.example.sb15deokhugamteam1.controller;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
+import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.service.BookService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,7 +71,9 @@ class BookControllerTest {
         String json = VALID_JSON.replace("\"클린 코드\"", "\"   \"");
 
         mockMvc.perform(multipart("/api/books").file(bookData(json)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_01"))
+                .andExpect(jsonPath("$.details.title").exists());
         verify(bookService, never()).create(any());
     }
 
@@ -79,7 +82,10 @@ class BookControllerTest {
         given(bookService.create(any())).willThrow(new DuplicateIsbnException("9788966260959"));
 
         mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BOOK_02"))
+                .andExpect(jsonPath("$.details.isbn").value("9788966260959"))
+                .andExpect(jsonPath("$.status").value(409));
     }
 
     @Test
@@ -88,7 +94,20 @@ class BookControllerTest {
         given(bookService.find(id)).willThrow(new BookNotFoundException(id));
 
         mockMvc.perform(get("/api/books/{bookId}", id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BOOK_01"))
+                .andExpect(jsonPath("$.message").value("도서를 찾을 수 없습니다."))
+                .andExpect(jsonPath("$.details.bookId").value(id.toString()));
+    }
+
+    @Test
+    void ISBN_형식이_틀리면_400과_BOOK_03() throws Exception {
+        given(bookService.create(any())).willThrow(new InvalidIsbnException("123"));
+
+        mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BOOK_03"))
+                .andExpect(jsonPath("$.details.isbn").value("123"));
     }
 
     @Test

@@ -50,6 +50,10 @@ public class BookService {
             // 바로 INSERT 해서, 동시에 같은 ISBN이 들어온 경우 DB 유니크 인덱스 위반을 여기서 잡는다
             return BookMapper.toDto(bookRepository.saveAndFlush(book));
         } catch (DataIntegrityViolationException e) {
+            // ISBN이 없으면 ISBN 중복일 수 없으므로 원래 예외를 그대로 던진다
+            if (isbn == null) {
+                throw e;
+            }
             throw new DuplicateIsbnException(isbn);
         }
     }

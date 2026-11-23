@@ -1,13 +1,11 @@
 package com.example.sb15deokhugamteam1.exception.book;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import java.util.Map;
 
 /** 삭제되지 않은 도서 중에 같은 ISBN이 이미 있을 때 → 409 */
-@ResponseStatus(HttpStatus.CONFLICT)
-public class DuplicateIsbnException extends RuntimeException {
+public class DuplicateIsbnException extends BookException {
 
     public DuplicateIsbnException(String isbn) {
-        super("이미 등록된 ISBN입니다. isbn=" + isbn);
+        super(BookErrorCode.DUPLICATE_ISBN, Map.of("isbn", isbn));
     }
 }

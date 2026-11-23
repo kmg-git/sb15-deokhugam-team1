@@ -97,6 +97,15 @@ class BookServiceTest {
             assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
                     .isInstanceOf(DuplicateIsbnException.class);
         }
+
+        @Test
+        void ISBN이_없는데_DB_제약_위반이면_원래_예외를_그대로_던진다() {
+            DataIntegrityViolationException original = new DataIntegrityViolationException("other constraint");
+            given(bookRepository.saveAndFlush(any(Book.class))).willThrow(original);
+
+            assertThatThrownBy(() -> bookService.create(createRequest(null)))
+                    .isSameAs(original);
+        }
     }
 
     @Nested
