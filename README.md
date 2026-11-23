@@ -1,11 +1,11 @@
 # {팀 이름}
 
-[팀 협업 문서]([https://example.com/team-notion](https://app.notion.com/p/cd5d399348a58333bcaf01e2282c83ff))
+[팀 협업 문서](https://app.notion.com/p/cd5d399348a58333bcaf01e2282c83ff)
 
 ## 팀원 구성
 
 [팀장 김민규](https://github.com/kmg-git)  
-[팀원 박석규](https://github.com/seock0630)  
+[팀원 박석규](https://github.com/seok0630)  
 [팀원 박종우](https://github.com/Park-jongwoo)  
 [팀원 김한민](https://github.com/Miiiin06)  
 [팀원 이준영](https://github.com/gksrmf1210-droid)  
