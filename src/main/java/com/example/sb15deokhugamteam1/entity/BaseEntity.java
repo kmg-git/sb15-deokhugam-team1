@@ -1,36 +1,27 @@
 package com.example.sb15deokhugamteam1.entity;
 
-
-import jakarta.persistence.Column;
-import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.*;
 import lombok.Getter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.UUID;
+
 
 @Getter
+@EntityListeners(AuditingEntityListener.class)
 @MappedSuperclass
-public class BaseEntity {
+abstract public class BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Column(nullable = false,updatable = false)
+    @CreatedDate
+    private Instant  createdAt;
 
-    @Column(name = "updated_at")
-    private Instant updatedAt;
+    protected BaseEntity(){
 
-    protected BaseEntity() {
     }
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = Instant.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
-
-
 }
