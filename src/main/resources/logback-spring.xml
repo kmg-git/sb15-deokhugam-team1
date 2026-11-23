@@ -3,8 +3,8 @@
 
     <!-- 로그 한 줄마다 요청id, ip가 찍힘. MDC값이 없는 경우는 '-'로 표시-->
     <property name="LOG_PATTERN"
-              value="%d{yyyy-mm-dd HH:mm:ss.SSS} %-5level [%x{requestId:--}]
-[%x{clientIp:--}] %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:--}]
+[%X{clientIp:--}] %logger{36} - %msg%n"/>
 
     <!-- 환경변수 또는 시스템 프로퍼티 LOG_DIR로 바꿀 수 있고, 없으면 ./logs -->
     <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
