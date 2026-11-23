@@ -1,16 +1,15 @@
 package com.example.sb15deokhugamteam1.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "notifications")
 @Getter
-@Setter
-@NoArgsConstructor
-public class NotificationEntity extends BaseUpdatableEntity {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Notification extends BaseUpdatableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -25,4 +24,18 @@ public class NotificationEntity extends BaseUpdatableEntity {
 
     @Column(nullable = false)
     private Boolean confirmed = false;
+
+    private Notification(User user, Review review, String message) {
+        this.user = user;
+        this.review = review;
+        this.message = message;
+    }
+
+    public static Notification create(User user, Review review, String message) {
+        return new Notification(user,review,message);
+    }
+
+    public void updateConfirmed(boolean confirmed) {
+        this.confirmed = confirmed;
+    }
 }
