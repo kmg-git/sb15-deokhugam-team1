@@ -1,6 +1,7 @@
 package com.example.sb15deokhugamteam1.mapper.dto;
 
 
+import com.example.sb15deokhugamteam1.dto.response.PopularBookDto;
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PopularBook;
 import java.time.LocalDate;
@@ -50,7 +51,6 @@ public class PopularBookMapper {
         entity.getAuthor(),
         entity.getThumbnailUrl(),
         entity.getPeriod(),
-        entity.getBaseDate(),
         entity.getRank(),
         entity.getScore(),
         entity.getReviewCount(),
@@ -58,20 +58,4 @@ public class PopularBookMapper {
         entity.getCreatedAt()
     );
   }
-
-
-  public record PopularBookDto(
-      UUID id,
-      UUID bookId,
-      String title,
-      String author,
-      String thumbnailUrl,
-      Period period,
-      LocalDate baseDate,
-      Long rank,
-      Double score,
-      Long reviewCount,
-      Double rating,
-      OffsetDateTime createdAt
-  ) {}
 }
