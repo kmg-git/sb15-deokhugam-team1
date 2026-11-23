@@ -1,15 +1,14 @@
 package com.example.sb15deokhugamteam1.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "notifications")
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NotificationEntity extends BaseUpdatableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,4 +24,8 @@ public class NotificationEntity extends BaseUpdatableEntity {
 
     @Column(nullable = false)
     private Boolean confirmed = false;
+
+    public void updateConfirmed(boolean confirmed) {
+        this.confirmed = confirmed;
+    }
 }
