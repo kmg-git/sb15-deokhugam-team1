@@ -27,11 +27,7 @@ import lombok.NoArgsConstructor;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PowerUser {
-
-  @Id
-  @Column(name = "id", nullable = false)
-  private UUID id;
+public class PowerUser extends BaseEntity{
 
   @Column(name = "user_id", nullable = false)
   private UUID userId;
@@ -61,12 +57,8 @@ public class PowerUser {
   @Column(name = "comment_count", nullable = false)
   private Long commentCount;
 
-  @Column(name = "created_at", nullable = false)
-  private OffsetDateTime createdAt;
-
   @Builder
   public PowerUser(
-      UUID id,
       UUID userId,
       String nickname,
       Period period,
@@ -75,10 +67,8 @@ public class PowerUser {
       Double score,
       Double reviewScoreSum,
       Long likeCount,
-      Long commentCount,
-      OffsetDateTime createdAt
+      Long commentCount
   ) {
-    this.id = id != null ? id : UUID.randomUUID();
     this.userId = userId;
     this.nickname = nickname;
     this.period = period;
@@ -88,6 +78,5 @@ public class PowerUser {
     this.reviewScoreSum = reviewScoreSum;
     this.likeCount = likeCount;
     this.commentCount = commentCount;
-    this.createdAt = createdAt != null ? createdAt : OffsetDateTime.now();
   }
 }

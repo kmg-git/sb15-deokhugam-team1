@@ -27,11 +27,7 @@ import lombok.NoArgsConstructor;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PopularBook {
-
-  @Id
-  @Column(name = "id", nullable = false)
-  private UUID id;
+public class PopularBook extends BaseEntity {
 
   @Column(name = "book_id", nullable = false)
   private UUID bookId;
@@ -64,12 +60,10 @@ public class PopularBook {
   @Column(name = "rating", nullable = false)
   private Double rating;
 
-  @Column(name = "created_at", nullable = false)
-  private OffsetDateTime createdAt;
+
 
   @Builder
   public PopularBook(
-      UUID id,
       UUID bookId,
       String title,
       String author,
@@ -79,10 +73,9 @@ public class PopularBook {
       Long rank,
       Double score,
       Long reviewCount,
-      Double rating,
-      OffsetDateTime createdAt
+      Double rating
   ) {
-    this.id = id != null ? id : UUID.randomUUID();
+
     this.bookId = bookId;
     this.title = title;
     this.author = author;
@@ -93,6 +86,5 @@ public class PopularBook {
     this.score = score;
     this.reviewCount = reviewCount;
     this.rating = rating;
-    this.createdAt = createdAt != null ? createdAt : OffsetDateTime.now();
   }
 }
