@@ -14,7 +14,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class NotificationEntity {
+public class NotificationEntity extends BaseUpdatableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -33,9 +33,4 @@ public class NotificationEntity {
 
     @Column(nullable = false)
     private Boolean confirmed = false;
-
-    @Column(nullable = false)
-    private OffsetDateTime createdAt;
-
-    private OffsetDateTime updatedAt;
 }
