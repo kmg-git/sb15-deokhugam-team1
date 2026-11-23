@@ -1,7 +1,7 @@
 package com.example.sb15deokhugamteam1.dto.response;
 
 import com.example.sb15deokhugamteam1.entity.Period;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record PopularBookDto(
@@ -15,6 +15,6 @@ public record PopularBookDto(
     Double score,
     Long reviewCount,
     Double rating,
-    OffsetDateTime createdAt
+    Instant createdAt
 ) {
 }

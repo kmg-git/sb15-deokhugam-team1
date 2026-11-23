@@ -5,7 +5,6 @@ import com.example.sb15deokhugamteam1.dto.response.PowerUserDto;
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PowerUser;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -33,7 +32,6 @@ public class PowerUserMapper {
         .reviewScoreSum(reviewScoreSum)
         .likeCount(likeCount)
         .commentCount(commentCount)
-        .createdAt(OffsetDateTime.now())
         .build();
   }
 

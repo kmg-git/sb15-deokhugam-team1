@@ -5,7 +5,6 @@ import com.example.sb15deokhugamteam1.dto.response.PopularBookDto;
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PopularBook;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +34,6 @@ public class PopularBookMapper {
         .score(score)
         .reviewCount(reviewCount)
         .rating(rating)
-        .createdAt(OffsetDateTime.now())
         .build();
   }
 
