@@ -1,14 +1,14 @@
 package com.example.sb15deokhugamteam1.dto.response;
 
 import com.example.sb15deokhugamteam1.entity.Period;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record PowerUserDto(
     UUID userId,
     String nickname,
     Period period,
-    OffsetDateTime createdAt,
+    Instant createdAt,
     Long rank,
     Double score,
     Double reviewScoreSum,
