@@ -5,19 +5,19 @@
 ## 팀원 구성
 
 [팀장 김민규](https://github.com/kmg-git)  
-[{팀원 박석규}](https://github.com/github-id-2)  
-[{팀원 박종우}](https://github.com/github-id-3)  
-[{팀원 김한민}](https://github.com/github-id-4)  
-[{팀원 이주영}](https://github.com/github-id-5)  
+[팀원 박석규](https://github.com/seock0630)  
+[팀원 박종우](https://github.com/Park-jongwoo)  
+[팀원 김한민](https://github.com/Miiiin06)  
+[팀원 이준영](https://github.com/gksrmf1210-droid)  
 [팀원 전현진](https://github.com/ginkorn)
 
 ---
 
 ## 프로젝트 소개
 
-- **프로젝트명**: {덕후감}
-- **프로젝트 설명**: {책을 좋아하는 사람들이 리뷰와 댓글로 감상을 나누는 도서 리뷰 커뮤니티입니다. 책 뒷면 사진만 올리면 OCR로 ISBN을 인식해 도서 정보를 자동으로 채워 주고, 인기 도서·인기 리뷰·파워 유저 랭킹을 기간별로 보여 줍니다.}
-- **프로젝트 기간**: 2026.11.20 ~ 2026.12.DD
+- **프로젝트명**: 덕후감
+- **프로젝트 설명**: 책을 좋아하는 사람들이 리뷰와 댓글로 감상을 나누는 도서 리뷰 커뮤니티입니다. 책 뒷면 사진만 올리면 OCR로 ISBN을 인식해 도서 정보를 자동으로 채워 주고, 인기 도서·인기 리뷰·파워 유저 랭킹을 기간별로 보여 줍니다.
+- **프로젝트 기간**: 2026.11.20 ~ 2026.11.30 ~ 2026.12.10
 
 ---
 
