@@ -1,0 +1,4 @@
+package com.example.sb15deokhugamteam1.exception.Review;
+
+public class ReviewErrorCode {
+}
