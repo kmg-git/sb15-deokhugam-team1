@@ -31,5 +31,32 @@ public class User extends BaseUpdatableEntity {
         this.nickname = nickname;
         this.password = password;
     }
+
+    // 전달된 값만 수정
+    public void updateNickname(String nickname) {
+        if (nickname != null) {
+            this.nickname = requireText(nickname, "Nickname");
+        }
+    }
+
+    private static String requireText(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(
+                    field + " must not be blank"
+            );
+        }
+        return value;
+    }
+
+    // 논리 삭제: 최초 삭제 시각 유지
+    public void softDelete() {
+        if (this.deletedAt == null) {
+            this.deletedAt = Instant.now();
+        }
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }
 
