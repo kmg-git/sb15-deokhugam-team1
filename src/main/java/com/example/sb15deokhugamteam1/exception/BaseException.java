@@ -16,6 +16,4 @@ public abstract class BaseException extends RuntimeException {
         this.details = details;
     }
 
-
-
 }

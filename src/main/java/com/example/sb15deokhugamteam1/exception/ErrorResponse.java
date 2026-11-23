@@ -47,11 +47,11 @@ public class ErrorResponse {
     //스프링 기본값 사용
     public static ErrorResponse fromHttpStatus(HttpStatusCode status, String exceptionType) {
         if (status.value() == HttpStatus.BAD_REQUEST.value()) {
-            return of(ErrorCode.INVALID_INPUT, exceptionType);
+            return of(CommonErrorCode.INVALID_INPUT, exceptionType);
         }
         if (status.is5xxServerError()) {
-            return new ErrorResponse(Instant.now(), ErrorCode.INTERNAL_ERROR.getCode(),
-                    ErrorCode.INTERNAL_ERROR.getMessage(), null, exceptionType, status.value());
+            return new ErrorResponse(Instant.now(), CommonErrorCode.INTERNAL_ERROR.getCode(),
+                    CommonErrorCode.INTERNAL_ERROR.getMessage(), null, exceptionType, status.value());
         }
 
         HttpStatus httpStatus = HttpStatus.resolve(status.value());

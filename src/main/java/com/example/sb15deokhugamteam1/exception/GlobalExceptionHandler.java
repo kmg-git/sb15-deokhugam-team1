@@ -24,7 +24,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBase(BaseException e) {
 
         ErrorCode errorCode = e.getErrorCode();
-        log.warn("요청이 실패했습니다. code={}, message={}", errorCode.name(), errorCode.getMessage());
+        log.warn("요청이 실패했습니다. code={}, message={}", errorCode.getCode(), errorCode.getMessage());
 
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ErrorResponse.of(e));
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList());
 
 
-        return handleExceptionInternal(e, ErrorResponse.of(ErrorCode.INVALID_INPUT, errors),
+        return handleExceptionInternal(e, ErrorResponse.of(CommonErrorCode.INVALID_INPUT, errors),
                 headers, status, request);
     }
 
@@ -55,6 +55,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         if (status.is5xxServerError()) {
             log.error("요청 처리 중 서버 오류가 발생했습니다. status={}", status.value(), e);
+        } else {
+            log.info("요청 처리 중 예외가 발생했습니다. status={}, exception={}",
+                    status.value(), e.getClass().getSimpleName());
         }
 
         return super.handleExceptionInternal(e, response, headers, status, request);
@@ -67,8 +70,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         log.warn("입력값 검증 실패 {}", errors);
 
-        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
-                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, errors, e.getClass().getName()));
+        return ResponseEntity.status(CommonErrorCode.INVALID_INPUT.getStatus())
+                .body(ErrorResponse.of(CommonErrorCode.INVALID_INPUT, errors, e.getClass().getName()));
     }
 
     @ExceptionHandler(Exception.class)
@@ -77,6 +80,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("요청이 실패했습니다. 상정되지 않은 오류", e);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR,e.getClass().getName()));
+                .body(ErrorResponse.of(CommonErrorCode.INTERNAL_ERROR,e.getClass().getName()));
     }
 }
