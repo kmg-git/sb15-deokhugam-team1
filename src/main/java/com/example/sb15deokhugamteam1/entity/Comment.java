@@ -4,7 +4,7 @@ package com.example.sb15deokhugamteam1.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Table(name = "comments")
 @Entity
@@ -23,7 +23,7 @@ public class Comment extends BaseUpdatableEntity{
     private String content;
 
     @Column
-    private LocalDateTime DeletedAt;
+    private Instant deletedAt;
 
     protected Comment(){}
 
