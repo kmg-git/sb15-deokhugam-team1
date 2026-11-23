@@ -1,6 +1,7 @@
 package com.example.sb15deokhugamteam1.mapper.dto;
 
 
+import com.example.sb15deokhugamteam1.dto.response.PowerUserDto;
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PowerUser;
 import java.time.LocalDate;
@@ -42,32 +43,15 @@ public class PowerUserMapper {
       return null;
     }
     return new PowerUserDto(
-        entity.getId(),
         entity.getUserId(),
         entity.getNickname(),
         entity.getPeriod(),
-        entity.getBaseDate(),
+        entity.getCreatedAt(),
         entity.getRank(),
         entity.getScore(),
         entity.getReviewScoreSum(),
         entity.getLikeCount(),
-        entity.getCommentCount(),
-        entity.getCreatedAt()
+        entity.getCommentCount()
     );
   }
-
-
-  public record PowerUserDto(
-      UUID id,
-      UUID userId,
-      String nickname,
-      Period period,
-      LocalDate baseDate,
-      Long rank,
-      Double score,
-      Double reviewScoreSum,
-      Long likeCount,
-      Long commentCount,
-      OffsetDateTime createdAt
-  ) {}
 }
