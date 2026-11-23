@@ -12,11 +12,11 @@ import java.time.LocalDateTime;
 public class Comment extends BaseUpdatableEntity{
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviews",nullable = false)
+    @JoinColumn(name = "review_id",nullable = false)
     private Review review;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "users",nullable = false)
+    @JoinColumn(name = "user_id",nullable = false)
     private User user;
 
     @Column(nullable = false)
