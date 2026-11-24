@@ -27,4 +27,13 @@ public class Comment extends BaseUpdatableEntity{
 
     protected Comment(){}
 
+    public Comment(Review review, User user, String content) {
+        this.review = review;
+        this.user = user;
+        this.content = content;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }
