@@ -17,10 +17,10 @@ public class CommentService {
 
     @Transactional
     public void updateComment(UUID commentId, UUID requesterId, CommentUpdateRequest request) {
-        Comment comment = commentRepository.findById(commentId)
-                .filter(found -> found.getDeletedAt() == null)
+        Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
-        if(!requesterId.equals(comment.getUser().getId())){
+
+        if (!requesterId.equals(comment.getUser().getId())) {
             throw new CommentNotEqualUserException(requesterId);
         }
 
