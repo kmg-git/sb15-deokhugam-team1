@@ -10,11 +10,13 @@ import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.mapper.dto.BookMapper;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,8 @@ public class BookService {
 
     /** schema.sql 의 ck_books_isbn 과 같은 규칙: 978/979로 시작하는 13자리 숫자 */
     private static final Pattern ISBN_13 = Pattern.compile("^97[89]\\d{10}$");
+
+    private static final String ACTIVE_ISBN_INDEX = "uq_books_active_isbn";
 
     private final BookRepository bookRepository;
 
@@ -50,11 +54,11 @@ public class BookService {
             // 바로 INSERT 해서, 동시에 같은 ISBN이 들어온 경우 DB 유니크 인덱스 위반을 여기서 잡는다
             return BookMapper.toDto(bookRepository.saveAndFlush(book));
         } catch (DataIntegrityViolationException e) {
-            // ISBN이 없으면 ISBN 중복일 수 없으므로 원래 예외를 그대로 던진다
-            if (isbn == null) {
-                throw e;
+            // ISBN 유니크 인덱스 위반일 때만 409로 바꾸고, 다른 DB 오류는 그대로 던진다
+            if (isbn != null && isActiveIsbnViolation(e)) {
+                throw new DuplicateIsbnException(isbn);
             }
-            throw new DuplicateIsbnException(isbn);
+            throw e;
         }
     }
 
@@ -94,6 +98,17 @@ public class BookService {
     private Book getActiveBook(UUID bookId) {
         return bookRepository.findByIdAndDeletedAtIsNull(bookId)
                 .orElseThrow(() -> new BookNotFoundException(bookId));
+    }
+
+    /** schema.sql 의 uq_books_active_isbn 인덱스 위반인지 확인 */
+    private static boolean isActiveIsbnViolation(DataIntegrityViolationException e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof ConstraintViolationException cve) {
+                String name = cve.getConstraintName();
+                return name != null && name.toLowerCase(Locale.ROOT).contains(ACTIVE_ISBN_INDEX);
+            }
+        }
+        return false;
     }
 
     /** 빈 값은 null, 하이픈·공백은 제거한 뒤 ISBN-13 형식인지 검사 */

@@ -78,6 +78,17 @@ class BookControllerTest {
     }
 
     @Test
+    void 제목이_255자를_넘으면_400() throws Exception {
+        String json = VALID_JSON.replace("\"클린 코드\"", "\"" + "가".repeat(256) + "\"");
+
+        mockMvc.perform(multipart("/api/books").file(bookData(json)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_01"))
+                .andExpect(jsonPath("$.details.title").exists());
+        verify(bookService, never()).create(any());
+    }
+
+    @Test
     void ISBN이_중복이면_409() throws Exception {
         given(bookService.create(any())).willThrow(new DuplicateIsbnException("9788966260959"));
 

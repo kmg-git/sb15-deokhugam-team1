@@ -8,6 +8,7 @@ import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +47,11 @@ class BookServiceTest {
 
     private static Book book() {
         return new Book("클린 코드", "로버트 C. 마틴", "설명", "인사이트", PUBLISHED, "9788966260959", null);
+    }
+
+    private static DataIntegrityViolationException violation(String constraintName) {
+        return new DataIntegrityViolationException("unique violation",
+                new ConstraintViolationException("duplicate key", new SQLException(), constraintName));
     }
 
     @Nested
@@ -92,10 +99,20 @@ class BookServiceTest {
         void 동시_등록으로_DB_유니크_위반이_나도_DuplicateIsbnException() {
             given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(false);
             given(bookRepository.saveAndFlush(any(Book.class)))
-                    .willThrow(new DataIntegrityViolationException("uq_books_active_isbn"));
+                    .willThrow(violation("uq_books_active_isbn"));
 
             assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
                     .isInstanceOf(DuplicateIsbnException.class);
+        }
+
+        @Test
+        void ISBN이_있어도_다른_DB_오류면_중복으로_바꾸지_않는다() {
+            DataIntegrityViolationException original = new DataIntegrityViolationException("value too long");
+            given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(false);
+            given(bookRepository.saveAndFlush(any(Book.class))).willThrow(original);
+
+            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
+                    .isSameAs(original);
         }
 
         @Test
