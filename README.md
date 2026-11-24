@@ -1,7 +1,7 @@
 # {팀 이름}
 [![codecov](https://codecov.io/github/kmg-git/sb15-deokhugam-team1/graph/badge.svg?token=7JPXL8HVBX)](https://codecov.io/github/kmg-git/sb15-deokhugam-team1)
 [팀 협업 문서](https://app.notion.com/p/cd5d399348a58333bcaf01e2282c83ff)
-
+<br>
 ## 팀원 구성
 
 [팀장 김민규](https://github.com/kmg-git)  
