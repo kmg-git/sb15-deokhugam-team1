@@ -4,11 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -42,7 +40,7 @@ public class PowerUser extends BaseEntity{
   @Column(name = "base_date", nullable = false)
   private LocalDate baseDate;
 
-  @Column(name = "`rank`", nullable = false)
+  @Column(name = "rank", nullable = false)
   private Long rank;
 
   @Column(name = "score", nullable = false)
