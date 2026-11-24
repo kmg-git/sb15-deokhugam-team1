@@ -14,11 +14,20 @@ import org.springframework.stereotype.Service;
 public class UserService {
     private final UserRepository userRepository;
 
-    public void register(UserRegisterRequest userRegisterRequest) {
+    public UserDto register(UserRegisterRequest userRegisterRequest) {
         // 이메일 중복 검사. 중복이면 DuplicateUserEmailException을 던진다.
         if (userRepository.existsByEmail(userRegisterRequest.email())) {
             throw new DuplicateUserEmailException(userRegisterRequest.email());
         }
 
+        // 저장소에 저장 후 돌려받은 변수를 돌려줘야 id랑 createdAt이 생겨있음
+        User user = userRepository.save(
+                new User(
+                userRegisterRequest.email(),
+                userRegisterRequest.nickname(),
+                userRegisterRequest.password())
+        );
+
+        return UserMapper.toDto(user);
     }
 }
