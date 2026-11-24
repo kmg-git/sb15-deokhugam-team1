@@ -16,6 +16,9 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -30,6 +33,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,6 +64,24 @@ class BookServiceTest {
     private static DataIntegrityViolationException violation(String constraintName) {
         return new DataIntegrityViolationException("unique violation",
                 new ConstraintViolationException("duplicate key", new SQLException(), constraintName));
+    }
+
+    static Stream<Arguments> cursorCases() {
+        return Stream.of(
+                Arguments.of(BookSortField.TITLE, "클린 코드", "클린 코드"),
+                Arguments.of(BookSortField.PUBLISHED_DATE, "2013-12-24", LocalDate.of(2013, 12, 24)),
+                Arguments.of(BookSortField.RATING, "4.5", 4.5),
+                Arguments.of(BookSortField.REVIEW_COUNT, "12", 12)
+        );
+    }
+
+    static Stream<Arguments> nextCursorCases() {
+        return Stream.of(
+                Arguments.of(BookSortField.TITLE, "가"),
+                Arguments.of(BookSortField.PUBLISHED_DATE, "2013-12-24"),
+                Arguments.of(BookSortField.RATING, "4.5"),
+                Arguments.of(BookSortField.REVIEW_COUNT, "7")
+        );
     }
 
     @Nested
@@ -137,6 +159,17 @@ class BookServiceTest {
     class FindAndUpdate {
 
         @Test
+        void 도서를_조회하면_DTO로_돌려준다() {
+            UUID id = UUID.randomUUID();
+            given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book()));
+
+            BookDto result = bookService.find(id);
+
+            assertThat(result.title()).isEqualTo("클린 코드");
+            assertThat(result.isbn()).isEqualTo("9788966260959");
+        }
+
+        @Test
         void 없는_도서를_조회하면_BookNotFoundException() {
             UUID id = UUID.randomUUID();
             given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.empty());
@@ -204,24 +237,29 @@ class BookServiceTest {
             assertThat(result.nextAfter()).isNull();
         }
 
-        @Test
-        void 평점_정렬이면_커서를_숫자로_바꿔서_넘긴다() {
-            Instant after = Instant.parse("2026-11-01T00:00:00Z");
+
+
+        @ParameterizedTest(name = "{0} 정렬: 커서 \"{1}\" → {2}")
+        @MethodSource("com.example.sb15deokhugamteam1.service.BookServiceTest#cursorCases")
+        void 정렬_기준마다_커서를_알맞은_타입으로_바꾼다(BookSortField field, String cursor, Object expected) {
             given(bookRepository.search(any(), any())).willReturn(List.of());
 
-            bookService.search(condition(BookSortField.RATING, "4.5", after, 10));
+            bookService.search(condition(field, cursor, Instant.parse("2026-11-01T00:00:00Z"), 10));
 
-            verify(bookRepository).search(any(), org.mockito.ArgumentMatchers.eq(4.5));
+            verify(bookRepository).search(any(), org.mockito.ArgumentMatchers.eq(expected));
         }
 
-        @Test
-        void 출판일_정렬이면_커서를_날짜로_바꿔서_넘긴다() {
-            Instant after = Instant.parse("2026-11-01T00:00:00Z");
-            given(bookRepository.search(any(), any())).willReturn(List.of());
+        @ParameterizedTest(name = "{0} 정렬이면 다음 커서는 {1}")
+        @MethodSource("com.example.sb15deokhugamteam1.service.BookServiceTest#nextCursorCases")
+        void 정렬_기준마다_마지막_책의_값으로_다음_커서를_만든다(BookSortField field, String expectedCursor) {
+            Book first = bookAt("가", 4.5, Instant.parse("2026-11-02T00:00:00Z"));
+            Book second = bookAt("나", 4.5, Instant.parse("2026-11-01T00:00:00Z"));
+            ReflectionTestUtils.setField(first, "reviewCount", 7);
+            given(bookRepository.search(any(), any())).willReturn(List.of(first, second));
 
-            bookService.search(condition(BookSortField.PUBLISHED_DATE, "2013-12-24", after, 10));
+            CursorPageResponseBookDto result = bookService.search(condition(field, null, null, 1));
 
-            verify(bookRepository).search(any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2013, 12, 24)));
+            assertThat(result.nextCursor()).isEqualTo(expectedCursor);
         }
 
         @Test

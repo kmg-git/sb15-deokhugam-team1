@@ -107,6 +107,17 @@ class BookControllerTest {
     }
 
     @Test
+    void 도서_상세_조회는_200() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(bookService.find(id)).willReturn(dto(id));
+
+        mockMvc.perform(get("/api/books/{bookId}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id.toString()))
+                .andExpect(jsonPath("$.title").value("클린 코드"));
+    }
+
+    @Test
     void 없는_도서_조회는_404() throws Exception {
         UUID id = UUID.randomUUID();
         given(bookService.find(id)).willThrow(new BookNotFoundException(id));

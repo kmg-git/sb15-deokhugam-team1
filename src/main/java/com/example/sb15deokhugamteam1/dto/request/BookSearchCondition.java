@@ -22,7 +22,4 @@ public record BookSearchCondition(
         Instant after,
         int limit
 ) {
-    public boolean hasCursor() {
-        return cursor != null && after != null;
-    }
 }
