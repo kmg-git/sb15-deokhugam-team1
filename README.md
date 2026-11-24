@@ -1,5 +1,5 @@
 # {팀 이름}
-
+[![codecov](https://codecov.io/github/kmg-git/sb15-deokhugam-team1/graph/badge.svg?token=7JPXL8HVBX)](https://codecov.io/github/kmg-git/sb15-deokhugam-team1)
 [팀 협업 문서](https://app.notion.com/p/cd5d399348a58333bcaf01e2282c83ff)
 
 ## 팀원 구성
@@ -157,23 +157,28 @@
 
 ```text
 .
-├── docs/
-│   └── images/
-├── src/
-│   ├── main/
-│   │   ├── java/com/example/project/
-│   │   │   ├── global/
-│   │   │   └── domain/
-│   │   │       └── {도메인명}/
-│   │   │           ├── controller/
-│   │   │           ├── service/
-│   │   │           ├── repository/
-│   │   │           ├── entity/
-│   │   │           └── dto/
-│   │   └── resources/
-│   └── test/
-├── build.gradle
-└── README.md
+└── com.example.sb15deokhugamteam1/
+    ├── client/
+    ├── config/
+    ├── controller/
+    ├── dto/
+    │   ├── page/
+    │   ├── request/
+    │   └── response/
+    ├── entity/
+    ├── exception/
+    │   ├── book/
+    │   ├── comments/
+    │   ├── dashboard/
+    │   ├── notifications/
+    │   ├── review/
+    │   └── user/
+    ├── mapper/
+    │   ├── dto/
+    │   └── page/
+    ├── repository/
+    ├── S3/
+    └── service/
 ```
 
 ---
