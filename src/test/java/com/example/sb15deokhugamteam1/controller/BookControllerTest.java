@@ -1,13 +1,18 @@
 package com.example.sb15deokhugamteam1.controller;
 
+import com.example.sb15deokhugamteam1.dto.page.CursorPageResponseBookDto;
+import com.example.sb15deokhugamteam1.dto.request.BookSearchCondition;
+import com.example.sb15deokhugamteam1.dto.request.BookSortField;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.service.BookService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -17,8 +22,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -100,6 +107,17 @@ class BookControllerTest {
     }
 
     @Test
+    void 도서_상세_조회는_200() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(bookService.find(id)).willReturn(dto(id));
+
+        mockMvc.perform(get("/api/books/{bookId}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id.toString()))
+                .andExpect(jsonPath("$.title").value("클린 코드"));
+    }
+
+    @Test
     void 없는_도서_조회는_404() throws Exception {
         UUID id = UUID.randomUUID();
         given(bookService.find(id)).willThrow(new BookNotFoundException(id));
@@ -119,6 +137,56 @@ class BookControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BOOK_03"))
                 .andExpect(jsonPath("$.details.isbn").value("123"));
+    }
+
+    @Test
+    void 목록_조회는_파라미터가_없으면_제목_내림차순_50개() throws Exception {
+        given(bookService.search(any())).willReturn(
+                new CursorPageResponseBookDto(List.of(), null, null, 0, 0L, false));
+
+        mockMvc.perform(get("/api/books"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.content").isArray());
+
+        ArgumentCaptor<BookSearchCondition> captor = ArgumentCaptor.forClass(BookSearchCondition.class);
+        verify(bookService).search(captor.capture());
+        assertThat(captor.getValue().sortField()).isEqualTo(BookSortField.TITLE);
+        assertThat(captor.getValue().direction()).isEqualTo(Sort.Direction.DESC);
+        assertThat(captor.getValue().limit()).isEqualTo(50);
+    }
+
+    @Test
+    void 목록_조회_파라미터를_그대로_넘긴다() throws Exception {
+        given(bookService.search(any())).willReturn(
+                new CursorPageResponseBookDto(List.of(), null, null, 0, 0L, false));
+
+        mockMvc.perform(get("/api/books")
+                        .param("keyword", "자바").param("orderBy", "rating").param("direction", "ASC")
+                        .param("cursor", "4.5").param("after", "2026-11-01T00:00:00Z").param("limit", "10"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<BookSearchCondition> captor = ArgumentCaptor.forClass(BookSearchCondition.class);
+        verify(bookService).search(captor.capture());
+        assertThat(captor.getValue()).isEqualTo(new BookSearchCondition("자바", BookSortField.RATING,
+                Sort.Direction.ASC, "4.5", Instant.parse("2026-11-01T00:00:00Z"), 10));
+    }
+
+    @Test
+    void 지원하지_않는_정렬_기준이면_400과_BOOK_04() throws Exception {
+        mockMvc.perform(get("/api/books").param("orderBy", "price"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BOOK_04"))
+                .andExpect(jsonPath("$.details.orderBy").value("price"));
+        verify(bookService, never()).search(any());
+    }
+
+    @Test
+    void limit이_범위를_벗어나거나_direction이_틀리면_400() throws Exception {
+        mockMvc.perform(get("/api/books").param("limit", "0")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/books").param("limit", "101")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/books").param("direction", "UP")).andExpect(status().isBadRequest());
+        verify(bookService, never()).search(any());
     }
 
     @Test

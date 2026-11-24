@@ -1,11 +1,15 @@
 package com.example.sb15deokhugamteam1.service;
 
+import com.example.sb15deokhugamteam1.dto.page.CursorPageResponseBookDto;
 import com.example.sb15deokhugamteam1.dto.request.BookCreateRequest;
+import com.example.sb15deokhugamteam1.dto.request.BookSearchCondition;
+import com.example.sb15deokhugamteam1.dto.request.BookSortField;
 import com.example.sb15deokhugamteam1.dto.request.BookUpdateRequest;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
 import com.example.sb15deokhugamteam1.entity.Book;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
+import com.example.sb15deokhugamteam1.exception.book.InvalidCursorException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.mapper.dto.BookMapper;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
@@ -16,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -60,6 +67,28 @@ public class BookService {
             }
             throw e;
         }
+    }
+
+    /** 도서 목록: 검색어로 거르고, 정렬 기준 + createdAt 순서로 커서 다음 limit 개 */
+    public CursorPageResponseBookDto search(BookSearchCondition condition) {
+        Object cursorValue = parseCursor(condition);
+
+        List<Book> rows = bookRepository.search(condition, cursorValue);
+        boolean hasNext = rows.size() > condition.limit();
+        List<Book> page = hasNext ? rows.subList(0, condition.limit()) : rows;
+
+        Book last = page.isEmpty() ? null : page.get(page.size() - 1);
+        String nextCursor = hasNext ? cursorOf(last, condition.sortField()) : null;
+        Instant nextAfter = hasNext ? last.getCreatedAt() : null;
+
+        return new CursorPageResponseBookDto(
+                page.stream().map(BookMapper::toDto).toList(),
+                nextCursor,
+                nextAfter,
+                page.size(),
+                bookRepository.countByKeyword(condition.keyword()),
+                hasNext
+        );
     }
 
     public BookDto find(UUID bookId) {
@@ -109,6 +138,38 @@ public class BookService {
             }
         }
         return false;
+    }
+
+    /** cursor 문자열을 정렬 기준에 맞는 타입으로 바꾼다. cursor·after 는 둘 다 있거나 둘 다 없어야 한다 */
+    private static Object parseCursor(BookSearchCondition condition) {
+        String cursor = condition.cursor();
+        Instant after = condition.after();
+        if (cursor == null && after == null) {
+            return null;
+        }
+        if (cursor == null || after == null) {
+            throw new InvalidCursorException(cursor, after);
+        }
+        try {
+            return switch (condition.sortField()) {
+                case TITLE -> cursor;
+                case PUBLISHED_DATE -> LocalDate.parse(cursor);
+                case RATING -> Double.valueOf(cursor);
+                case REVIEW_COUNT -> Integer.valueOf(cursor);
+            };
+        } catch (DateTimeParseException | NumberFormatException e) {
+            throw new InvalidCursorException(cursor, after);
+        }
+    }
+
+    /** 다음 페이지 요청에 쓸 커서: 이 페이지 마지막 책의 정렬 기준 값 */
+    private static String cursorOf(Book book, BookSortField sortField) {
+        return switch (sortField) {
+            case TITLE -> book.getTitle();
+            case PUBLISHED_DATE -> book.getPublishedDate().toString();
+            case RATING -> String.valueOf(book.getRating());
+            case REVIEW_COUNT -> String.valueOf(book.getReviewCount());
+        };
     }
 
     /** 빈 값은 null, 하이픈·공백은 제거한 뒤 ISBN-13 형식인지 검사 */
