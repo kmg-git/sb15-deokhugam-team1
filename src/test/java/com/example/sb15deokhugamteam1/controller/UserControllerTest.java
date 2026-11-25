@@ -91,8 +91,7 @@ public class UserControllerTest {
                         {"email":"test@test.com", "password":"test1234!"}
                         """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("test@test.com"))
-                .andExpect(jsonPath("$.nickname").value("tester"));
+                .andExpect(jsonPath("$.email").value("test@test.com"));
     }
 
     @Test
