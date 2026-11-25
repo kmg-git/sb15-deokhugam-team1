@@ -10,8 +10,11 @@ import com.example.sb15deokhugamteam1.exception.book.BookInfoNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
+import com.example.sb15deokhugamteam1.exception.book.IsbnNotRecognizedException;
+import com.example.sb15deokhugamteam1.exception.book.OcrFailedException;
 import com.example.sb15deokhugamteam1.service.BookInfoService;
 import com.example.sb15deokhugamteam1.service.BookService;
+import com.example.sb15deokhugamteam1.service.IsbnOcrService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +42,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,6 +57,9 @@ class BookControllerTest {
 
     @MockitoBean
     BookInfoService bookInfoService;
+
+    @MockitoBean
+    IsbnOcrService isbnOcrService;
 
     private static final String VALID_JSON = """
             {"title":"클린 코드","author":"로버트 C. 마틴","description":"설명",
@@ -259,5 +266,43 @@ class BookControllerTest {
     void ISBN_파라미터가_없으면_400() throws Exception {
         mockMvc.perform(get("/api/books/info")).andExpect(status().isBadRequest());
         verify(bookInfoService, never()).getByIsbn(any());
+    }
+
+    private static MockMultipartFile barcode() {
+        return new MockMultipartFile("image", "book.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3});
+    }
+
+    @Test
+    void OCR로_ISBN을_읽으면_200과_ISBN_문자열() throws Exception {
+        given(isbnOcrService.recognize(any())).willReturn("9788966260959");
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+                .andExpect(content().string("9788966260959"));
+    }
+
+    @Test
+    void OCR로_ISBN을_못_찾으면_400과_BOOK_09() throws Exception {
+        given(isbnOcrService.recognize(any())).willThrow(new IsbnNotRecognizedException());
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BOOK_09"));
+    }
+
+    @Test
+    void OCR_서비스가_실패하면_502와_BOOK_10() throws Exception {
+        given(isbnOcrService.recognize(any())).willThrow(new OcrFailedException());
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BOOK_10"));
+    }
+
+    @Test
+    void 이미지_파트가_없으면_400() throws Exception {
+        mockMvc.perform(multipart("/api/books/isbn/ocr")).andExpect(status().isBadRequest());
+        verify(isbnOcrService, never()).recognize(any());
     }
 }

@@ -2,6 +2,7 @@ package com.example.sb15deokhugamteam1.client.kakao;
 
 import com.example.sb15deokhugamteam1.exception.book.BookInfoFetchException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,7 +26,7 @@ public class KakaoBookClient {
     private final RestClient restClient;
     private final KakaoProperties properties;
 
-    public KakaoBookClient(RestClient kakaoRestClient, KakaoProperties properties) {
+    public KakaoBookClient(@Qualifier("kakaoRestClient") RestClient kakaoRestClient, KakaoProperties properties) {
         this.restClient = kakaoRestClient;
         this.properties = properties;
     }
