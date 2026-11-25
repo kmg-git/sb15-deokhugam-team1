@@ -1,8 +1,10 @@
 package com.example.sb15deokhugamteam1.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.example.sb15deokhugamteam1.dto.page.CursorPageResponsePowerUserDto;
 import com.example.sb15deokhugamteam1.dto.response.PowerUserDto;
@@ -13,6 +15,7 @@ import com.example.sb15deokhugamteam1.repository.PowerUserRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -77,6 +80,77 @@ class PowerUserQueryServiceTest {
     assertThat(response.nextAfter()).isEqualTo(firstCreatedAt);
     assertThat(response.size()).isEqualTo(size);
     then(powerUserMapper).shouldHaveNoMoreInteractions();
+  }
+
+  // [baseDate 미지정 시 최신 스냅샷 기준일 fallback]
+  @Test
+  @DisplayName("baseDate가 null이면 가장 최근 스냅샷 기준일로 파워 유저를 조회한다")
+  void getPowerUsers_whenBaseDateNull_usesLatestSnapshotBaseDate() {
+    // given
+    Period period = Period.ALL_TIME;
+    LocalDate latestBaseDate = LocalDate.of(2026, 11, 24);
+    int size = 1;
+
+    PowerUser latestHolder = createPowerUser(period, latestBaseDate, 1L, 40.0);
+    PowerUser first = createPowerUser(period, latestBaseDate, 1L, 95.0);
+    Instant firstCreatedAt = Instant.parse("2026-11-24T01:00:00Z");
+    ReflectionTestUtils.setField(first, "id", UUID.randomUUID());
+    ReflectionTestUtils.setField(first, "createdAt", firstCreatedAt);
+
+    PowerUserDto firstDto = new PowerUserDto(
+        first.getUserId(),
+        first.getNickname(),
+        first.getPeriod(),
+        first.getCreatedAt(),
+        first.getRank(),
+        first.getScore(),
+        first.getReviewScoreSum(),
+        first.getLikeCount(),
+        first.getCommentCount()
+    );
+
+    given(powerUserRepository.findTopByPeriodOrderByBaseDateDesc(period))
+        .willReturn(Optional.of(latestHolder));
+    given(powerUserRepository.findRankingWithCursor(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
+        .willReturn(List.of(first));
+    given(powerUserMapper.toDto(first)).willReturn(firstDto);
+
+    // when
+    CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
+        period, null, null, size
+    );
+
+    // then
+    assertThat(response.content()).containsExactly(firstDto);
+    assertThat(response.hasNext()).isFalse();
+    assertThat(response.nextCursor()).isEqualTo("1");
+    assertThat(response.nextAfter()).isEqualTo(firstCreatedAt);
+    assertThat(response.size()).isEqualTo(size);
+  }
+
+  // [baseDate 미지정이고 최신 스냅샷도 없을 때 빈 페이지 반환]
+  @Test
+  @DisplayName("baseDate가 null이고 스냅샷이 없으면 빈 페이지를 반환한다")
+  void getPowerUsers_whenBaseDateNullAndNoSnapshot_returnsEmptyPage() {
+    // given
+    Period period = Period.DAILY;
+    int size = 10;
+
+    given(powerUserRepository.findTopByPeriodOrderByBaseDateDesc(period))
+        .willReturn(Optional.empty());
+
+    // when
+    CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
+        period, null, null, size
+    );
+
+    // then
+    assertThat(response.content()).isEmpty();
+    assertThat(response.hasNext()).isFalse();
+    assertThat(response.nextCursor()).isNull();
+    assertThat(response.nextAfter()).isNull();
+    assertThat(response.size()).isEqualTo(size);
+    then(powerUserRepository).should(never()).findRankingWithCursor(any(), any(), any(), any());
   }
 
   @Test
