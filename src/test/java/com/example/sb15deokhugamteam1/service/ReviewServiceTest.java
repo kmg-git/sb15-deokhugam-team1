@@ -22,6 +22,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.example.sb15deokhugamteam1.dto.request.ReviewSearchRequest;
+import com.example.sb15deokhugamteam1.dto.response.ReviewPageResponse;
+
+import java.time.Instant;
+
 
 import java.util.List;
 import java.util.Optional;
@@ -859,12 +864,71 @@ public class ReviewServiceTest {
         verify(reviewRepository)
                 .findAllByBook_IdAndDeletedAtIsNull(bookId, pageable);
     }
+    @Test
+    void search_정상적으로_리뷰를 검색한다() {
+        UUID userId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
 
+        Book book = new Book(
+                "테스트 도서",
+                "테스트 저자",
+                "테스트 설명",
+                "테스트 설명",
+                "테스트 출판사",
+                java.time.LocalDate.of(2025, 1, 1),
+                "9781234567890",null
+        );
 
+        User user  = new User(
+                "test@test.com",
+                "테스트 사용자",
+                "paasword"
+        );
 
+        ReflectionTestUtils.setField(book, "id", bookId);
+        ReflectionTestUtils.setField(user, "id", userId);
 
+        Review review = new  Review(
+                book,
+                user,
+                "정상 검색 테스트 리뷰",
+                5
+        );
 
+        ReflectionTestUtils.setField(review,"id", UUID.randomUUID());
+        ReflectionTestUtils.setField(
+                review,
+                "createdAt",
+                Instant.parse("2026-11-25T10:00:00Z")
+        );
+        ReviewSearchRequest request = mock(ReviewSearchRequest.class);
 
+        when(request.getUserId()).thenReturn(userId);
+        when(request.getBookId()).thenReturn(bookId);
+        when(request.getLimit()).thenReturn(10);
+
+        when(reviewQueryRepository.searchReviews(
+                userId, bookId, null, null, null, null, null, 10
+        )).thenReturn(new java.util.ArrayList<>(List.of(review)));
+
+        when(reviewQueryRepository.countReviews(userId, bookId, null))
+                .thenReturn(1L);
+
+        // when
+        ReviewPageResponse result = reviewService.search(request);
+
+        // then
+        assertEquals(1, result.content().size());
+        assertEquals(1, result.size());
+        assertEquals(1L, result.totalElements());
+        assertFalse(result.hasNext());
+        assertEquals("정상 검색 테스트 리뷰", result.content().get(0).getContent());
+
+        verify(reviewQueryRepository).searchReviews(
+                userId, bookId, null, null, null, null, null, 10
+        );
+        verify(reviewQueryRepository).countReviews(userId, bookId, null);
+    }
 
 
 
