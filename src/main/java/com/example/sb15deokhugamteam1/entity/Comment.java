@@ -2,6 +2,7 @@ package com.example.sb15deokhugamteam1.entity;
 
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -23,7 +24,7 @@ public class Comment extends BaseUpdatableEntity{
     private String content;
 
     @Column
-    private LocalDateTime DeletedAt;
+    private Instant deletedAt;
 
     protected Comment(){}
 
