@@ -6,12 +6,15 @@ import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
 import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
+import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.mapper.dto.UserMapper;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +49,14 @@ public class UserService {
         if (!passwordEncoder.matches(userLoginRequest.password(), user.getPassword())) {
             throw new LoginFailedException();
         }
+
+        return UserMapper.toDto(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserDto find(UUID userId) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         return UserMapper.toDto(user);
     }
