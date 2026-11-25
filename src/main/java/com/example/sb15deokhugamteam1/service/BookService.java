@@ -10,7 +10,6 @@ import com.example.sb15deokhugamteam1.entity.Book;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidCursorException;
-import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.mapper.dto.BookMapper;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,15 +24,11 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BookService {
-
-    /** schema.sql 의 ck_books_isbn 과 같은 규칙: 978/979로 시작하는 13자리 숫자 */
-    private static final Pattern ISBN_13 = Pattern.compile("^97[89]\\d{10}$");
 
     private static final String ACTIVE_ISBN_INDEX = "uq_books_active_isbn";
 
@@ -41,7 +36,7 @@ public class BookService {
 
     @Transactional
     public BookDto create(BookCreateRequest request) {
-        String isbn = normalizeIsbn(request.isbn());
+        String isbn = IsbnNormalizer.normalize(request.isbn());
         if (isbn != null && bookRepository.existsByIsbnAndDeletedAtIsNull(isbn)) {
             throw new DuplicateIsbnException(isbn);
         }
@@ -170,17 +165,5 @@ public class BookService {
             case RATING -> String.valueOf(book.getRating());
             case REVIEW_COUNT -> String.valueOf(book.getReviewCount());
         };
-    }
-
-    /** 빈 값은 null, 하이픈·공백은 제거한 뒤 ISBN-13 형식인지 검사 */
-    private static String normalizeIsbn(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        String isbn = raw.replaceAll("[\\s-]", "");
-        if (!ISBN_13.matcher(isbn).matches()) {
-            throw new InvalidIsbnException(raw);
-        }
-        return isbn;
     }
 }
