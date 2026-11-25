@@ -5,6 +5,7 @@ import com.example.sb15deokhugamteam1.dto.request.UserRegisterRequest;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
+import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,7 @@ public class UserServiceTest {
     void login_success() {
         UserLoginRequest userLoginRequest = new UserLoginRequest("test@test.com", "test1234!");
 
-        User user = new User(userLoginRequest.email(), "seok0630", userLoginRequest.password());
+        User user = new User(userLoginRequest.email(), "seok0630", "hashed");
         given(userRepository.findByEmailAndDeletedAtIsNull(userLoginRequest.email())).willReturn(Optional.of(user));
         given(passwordEncoder.matches("test1234!", "hashed")).willReturn(true);
 
@@ -86,4 +87,25 @@ public class UserServiceTest {
         assertThat(userDto.nickname()).isEqualTo("seok0630");
     }
 
+    @Test
+    @DisplayName(value = "없는 이메일이면 예외")
+    void login_email() {
+        UserLoginRequest userLoginRequest = new UserLoginRequest("test@test.com", "test1234!");
+
+        given(userRepository.findByEmailAndDeletedAtIsNull(userLoginRequest.email())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.login(userLoginRequest)).isInstanceOf(LoginFailedException.class);
+    }
+
+    @Test
+    @DisplayName(value = "비밀번호가 틀리면 예외")
+    void login_password() {
+        UserLoginRequest userLoginRequest = new UserLoginRequest("test@test.com", "test1234!");
+
+        User user = new User(userLoginRequest.email(), "seok0630", "hashed");
+        given(userRepository.findByEmailAndDeletedAtIsNull(userLoginRequest.email())).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("test1234!", "hashed")).willReturn(false);
+
+        assertThatThrownBy(() -> userService.login(userLoginRequest)).isInstanceOf(LoginFailedException.class);
+    }
 }
