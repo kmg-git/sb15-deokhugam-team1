@@ -3,6 +3,7 @@ package com.example.sb15deokhugamteam1.controller;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
 import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
+import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -116,6 +118,28 @@ public class UserControllerTest {
                         {"email":"test", "password":"test1234!"}
                         """))
                 .andExpect(status().isBadRequest());
+    }
+
+    /** 상세 조회 테스트 **/
+
+    @Test
+    void 조회_성공하면_200() throws Exception {
+        given(userService.find(userDto.id())).willReturn(userDto);
+
+        mockMvc.perform(get("/api/users/{userId}", userDto.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("test@test.com"))
+                .andExpect(jsonPath("$.nickname").value("tester"));
+    }
+
+    @Test
+    void 없는_유저면_404() throws Exception {
+        UUID userId = UUID.randomUUID();
+        given(userService.find(userId)).willThrow(new UserNotFoundException(userId));
+
+        mockMvc.perform(get("/api/users/{userId}", userId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_02"));
     }
 
 
