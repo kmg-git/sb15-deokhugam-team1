@@ -8,10 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PopularBookRepository extends JpaRepository<PopularBook, UUID> {
+
+  Optional<PopularBook> findTopByPeriodOrderByBaseDateDesc(Period period);
 
   Optional<PopularBook> findByPeriodAndBaseDateAndBookId(
       Period period,
@@ -45,6 +48,14 @@ public interface PopularBookRepository extends JpaRepository<PopularBook, UUID> 
       Pageable pageable
   );
 
-  void deleteAllByPeriodAndBaseDate(Period period, LocalDate baseDate);
-
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("""
+      DELETE FROM PopularBook pb
+      WHERE pb.period = :period
+        AND pb.baseDate = :baseDate
+      """)
+  void deleteAllByPeriodAndBaseDate(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate
+  );
 }

@@ -8,10 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PowerUserRepository extends JpaRepository<PowerUser, UUID> {
+
+  Optional<PowerUser> findTopByPeriodOrderByBaseDateDesc(Period period);
 
   Optional<PowerUser> findByPeriodAndBaseDateAndUserId(
       Period period,
@@ -45,5 +48,14 @@ public interface PowerUserRepository extends JpaRepository<PowerUser, UUID> {
       Pageable pageable
   );
 
-  void deleteAllByPeriodAndBaseDate(Period period, LocalDate baseDate);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("""
+      DELETE FROM PowerUser pu
+      WHERE pu.period = :period
+        AND pu.baseDate = :baseDate
+      """)
+  void deleteAllByPeriodAndBaseDate(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate
+  );
 }

@@ -1,6 +1,5 @@
 package com.example.sb15deokhugamteam1.repository;
 
-
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PopularReview;
 import java.time.LocalDate;
@@ -9,10 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PopularReviewRepository extends JpaRepository<PopularReview, UUID> {
+
+  Optional<PopularReview> findTopByPeriodOrderByBaseDateDesc(Period period);
 
   Optional<PopularReview> findByPeriodAndBaseDateAndReviewId(
       Period period,
@@ -46,6 +48,14 @@ public interface PopularReviewRepository extends JpaRepository<PopularReview, UU
       Pageable pageable
   );
 
-  void deleteAllByPeriodAndBaseDate(Period period, LocalDate baseDate);
-
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("""
+      DELETE FROM PopularReview pr
+      WHERE pr.period = :period
+        AND pr.baseDate = :baseDate
+      """)
+  void deleteAllByPeriodAndBaseDate(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate
+  );
 }
