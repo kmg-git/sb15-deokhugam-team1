@@ -19,7 +19,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public UserDto register(UserRegisterRequest userRegisterRequest) {
         // 이메일 중복 검사. 중복이면 DuplicateUserEmailException을 던진다.
         if (userRepository.existsByEmail(userRegisterRequest.email())) {
@@ -38,6 +38,7 @@ public class UserService {
         return UserMapper.toDto(user);
     }
 
+    @Transactional(readOnly = true)
     public UserDto login(UserLoginRequest userLoginRequest) {
         // 이메일이 없어 user가 빈 경우. 로그인 실패
         User user = userRepository.findByEmailAndDeletedAtIsNull(userLoginRequest.email())
