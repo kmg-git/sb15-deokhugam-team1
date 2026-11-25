@@ -28,10 +28,28 @@ public class PopularBookQueryService {
       Long cursorRank,
       int size
   ) {
+    // 0. baseDate 미지정 시 해당 기간의 가장 최근 스냅샷 기준일 조회
+    LocalDate targetBaseDate = (baseDate != null)
+        ? baseDate
+        : popularBookRepository.findTopByPeriodOrderByBaseDateDesc(period)
+            .map(PopularBook::getBaseDate)
+            .orElse(null);
+
+    if (targetBaseDate == null) {
+      return new CursorPageResponsePopularBookDto(
+          List.of(),
+          null,
+          null,
+          size,
+          0L,
+          false
+      );
+    }
+
     // 1. 다음 페이지 여부 확인을 위해 size + 1건 조회
     List<PopularBook> fetched = popularBookRepository.findRankingWithCursor(
         period,
-        baseDate,
+        targetBaseDate,
         cursorRank,
         PageRequest.of(0, size + 1)
     );
