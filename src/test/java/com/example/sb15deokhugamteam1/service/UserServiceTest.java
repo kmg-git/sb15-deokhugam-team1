@@ -6,6 +6,7 @@ import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
 import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
+import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,6 +74,8 @@ public class UserServiceTest {
     }
 
 
+    /** Login 테스트 **/
+
     @Test
     @DisplayName(value = "정상 로그인이면 UserDTO 돌려주기")
     void login_success() {
@@ -107,5 +111,29 @@ public class UserServiceTest {
         given(passwordEncoder.matches("test1234!", "hashed")).willReturn(false);
 
         assertThatThrownBy(() -> userService.login(userLoginRequest)).isInstanceOf(LoginFailedException.class);
+    }
+
+    /** 상세 조회 테스트 **/
+
+    @Test
+    @DisplayName(value = "있는 유저면 UserDTO 돌려주기")
+    void find_success() {
+        UUID userId = UUID.randomUUID();
+        User user = new User("test@test.com", "seok0630", "hashed");
+        given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.of(user));
+
+        UserDto userDto = userService.find(userId);
+
+        assertThat(userDto.email()).isEqualTo("test@test.com");
+        assertThat(userDto.nickname()).isEqualTo("seok0630");
+    }
+
+    @Test
+    @DisplayName(value = "없는 유저면 예외")
+    void find_not_found() {
+        UUID userId = UUID.randomUUID();
+        given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.find(userId)).isInstanceOf(UserNotFoundException.class);
     }
 }
