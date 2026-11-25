@@ -1,15 +1,21 @@
 package com.example.sb15deokhugamteam1.service;
 
+import com.example.sb15deokhugamteam1.dto.request.UserLoginRequest;
 import com.example.sb15deokhugamteam1.dto.request.UserRegisterRequest;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
+import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
+import com.example.sb15deokhugamteam1.exception.user.UserForbiddenException;
+import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.mapper.dto.UserMapper;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +38,18 @@ public class UserService {
                     passwordEncoder.encode(userRegisterRequest.password())
                 )
         );
+
+        return UserMapper.toDto(user);
+    }
+
+    public UserDto login(UserLoginRequest userLoginRequest) {
+        // 이메일이 없어 user가 빈 경우. 로그인 실패
+        User user = userRepository.findByEmailAndDeletedAtIsNull(userLoginRequest.email())
+                .orElseThrow(LoginFailedException::new);
+
+        if (!passwordEncoder.matches(userLoginRequest.password(), user.getPassword())) {
+            throw new LoginFailedException();
+        }
 
         return UserMapper.toDto(user);
     }
