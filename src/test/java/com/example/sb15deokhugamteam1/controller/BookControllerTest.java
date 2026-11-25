@@ -4,9 +4,13 @@ import com.example.sb15deokhugamteam1.dto.page.CursorPageResponseBookDto;
 import com.example.sb15deokhugamteam1.dto.request.BookSearchCondition;
 import com.example.sb15deokhugamteam1.dto.request.BookSortField;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
+import com.example.sb15deokhugamteam1.dto.response.BookInfoDto;
+import com.example.sb15deokhugamteam1.exception.book.BookInfoFetchException;
+import com.example.sb15deokhugamteam1.exception.book.BookInfoNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
+import com.example.sb15deokhugamteam1.service.BookInfoService;
 import com.example.sb15deokhugamteam1.service.BookService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -46,6 +50,9 @@ class BookControllerTest {
 
     @MockitoBean
     BookService bookService;
+
+    @MockitoBean
+    BookInfoService bookInfoService;
 
     private static final String VALID_JSON = """
             {"title":"클린 코드","author":"로버트 C. 마틴","description":"설명",
@@ -216,5 +223,41 @@ class BookControllerTest {
         willThrow(new BookNotFoundException(id)).given(bookService).softDelete(id);
 
         mockMvc.perform(delete("/api/books/{bookId}", id)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void ISBN_정보_조회는_200이고_표지는_Base64로_내려간다() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willReturn(new BookInfoDto("클린 코드", "로버트 C. 마틴",
+                "설명", "인사이트", "2013-12-24", "9788966260959", new byte[]{1, 2, 3}));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("클린 코드"))
+                .andExpect(jsonPath("$.publishedDate").value("2013-12-24"))
+                .andExpect(jsonPath("$.thumbnailImage").value("AQID"));
+    }
+
+    @Test
+    void ISBN_정보가_없으면_404와_BOOK_06() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willThrow(new BookInfoNotFoundException("9788966260959"));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BOOK_06"));
+    }
+
+    @Test
+    void 카카오_호출이_실패하면_502와_BOOK_07() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willThrow(new BookInfoFetchException("9788966260959"));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BOOK_07"));
+    }
+
+    @Test
+    void ISBN_파라미터가_없으면_400() throws Exception {
+        mockMvc.perform(get("/api/books/info")).andExpect(status().isBadRequest());
+        verify(bookInfoService, never()).getByIsbn(any());
     }
 }
