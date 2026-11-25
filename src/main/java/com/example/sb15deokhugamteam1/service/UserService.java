@@ -6,8 +6,6 @@ import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
 import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
-import com.example.sb15deokhugamteam1.exception.user.UserForbiddenException;
-import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.mapper.dto.UserMapper;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,15 +13,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public UserDto register(UserRegisterRequest userRegisterRequest) {
         // 이메일 중복 검사. 중복이면 DuplicateUserEmailException을 던진다.
         if (userRepository.existsByEmail(userRegisterRequest.email())) {
