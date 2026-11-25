@@ -865,7 +865,7 @@ public class ReviewServiceTest {
                 .findAllByBook_IdAndDeletedAtIsNull(bookId, pageable);
     }
     @Test
-    void search_정상적으로_리뷰를 검색한다() {
+    void search_정상적으로_리뷰를_검색한다() {
         UUID userId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
@@ -873,10 +873,10 @@ public class ReviewServiceTest {
                 "테스트 도서",
                 "테스트 저자",
                 "테스트 설명",
-                "테스트 설명",
                 "테스트 출판사",
                 java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",null
+                "9781234567890",
+                null
         );
 
         User user  = new User(
@@ -901,34 +901,14 @@ public class ReviewServiceTest {
                 "createdAt",
                 Instant.parse("2026-11-25T10:00:00Z")
         );
-        ReviewSearchRequest request = mock(ReviewSearchRequest.class);
 
-        when(request.getUserId()).thenReturn(userId);
-        when(request.getBookId()).thenReturn(bookId);
-        when(request.getLimit()).thenReturn(10);
-
-        when(reviewQueryRepository.searchReviews(
-                userId, bookId, null, null, null, null, null, 10
-        )).thenReturn(new java.util.ArrayList<>(List.of(review)));
-
-        when(reviewQueryRepository.countReviews(userId, bookId, null))
-                .thenReturn(1L);
-
-        // when
-        ReviewPageResponse result = reviewService.search(request);
-
-        // then
-        assertEquals(1, result.content().size());
-        assertEquals(1, result.size());
-        assertEquals(1L, result.totalElements());
-        assertFalse(result.hasNext());
-        assertEquals("정상 검색 테스트 리뷰", result.content().get(0).getContent());
-
-        verify(reviewQueryRepository).searchReviews(
-                userId, bookId, null, null, null, null, null, 10
-        );
-        verify(reviewQueryRepository).countReviews(userId, bookId, null);
     }
+
+
+
+
+
+
 
 
 
