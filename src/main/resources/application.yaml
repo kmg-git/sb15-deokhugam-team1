@@ -21,3 +21,7 @@ kakao:
   # 카카오 디벨로퍼스 REST API 키. 깃에 올리지 말고 환경변수로만 넣는다
   rest-api-key: ${KAKAO_REST_API_KEY:}
   base-url: https://dapi.kakao.com
+ocr-space:
+  # OCR.space API 키. 깃에 올리지 말고 환경변수로만 넣는다
+  api-key: ${OCR_SPACE_API_KEY:}
+  base-url: https://api.ocr.space
