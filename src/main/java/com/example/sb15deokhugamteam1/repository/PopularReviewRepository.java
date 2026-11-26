@@ -41,7 +41,22 @@ public interface PopularReviewRepository extends JpaRepository<PopularReview, UU
         AND (:cursorRank IS NULL OR pr.rank > :cursorRank)
       ORDER BY pr.rank ASC, pr.id ASC
       """)
-  List<PopularReview> findRankingWithCursor(
+  List<PopularReview> findRankingWithCursorAsc(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate,
+      @Param("cursorRank") Long cursorRank,
+      Pageable pageable
+  );
+
+  @Query("""
+      SELECT pr
+      FROM PopularReview pr
+      WHERE pr.period = :period
+        AND pr.baseDate = :baseDate
+        AND (:cursorRank IS NULL OR pr.rank < :cursorRank)
+      ORDER BY pr.rank DESC, pr.id DESC
+      """)
+  List<PopularReview> findRankingWithCursorDesc(
       @Param("period") Period period,
       @Param("baseDate") LocalDate baseDate,
       @Param("cursorRank") Long cursorRank,

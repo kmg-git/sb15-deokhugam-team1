@@ -41,7 +41,22 @@ public interface PopularBookRepository extends JpaRepository<PopularBook, UUID> 
         AND (:cursorRank IS NULL OR pb.rank > :cursorRank)
       ORDER BY pb.rank ASC, pb.id ASC
       """)
-  List<PopularBook> findRankingWithCursor(
+  List<PopularBook> findRankingWithCursorAsc(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate,
+      @Param("cursorRank") Long cursorRank,
+      Pageable pageable
+  );
+
+  @Query("""
+      SELECT pb
+      FROM PopularBook pb
+      WHERE pb.period = :period
+        AND pb.baseDate = :baseDate
+        AND (:cursorRank IS NULL OR pb.rank < :cursorRank)
+      ORDER BY pb.rank DESC, pb.id DESC
+      """)
+  List<PopularBook> findRankingWithCursorDesc(
       @Param("period") Period period,
       @Param("baseDate") LocalDate baseDate,
       @Param("cursorRank") Long cursorRank,

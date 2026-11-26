@@ -41,7 +41,22 @@ public interface PowerUserRepository extends JpaRepository<PowerUser, UUID> {
         AND (:cursorRank IS NULL OR pu.rank > :cursorRank)
       ORDER BY pu.rank ASC, pu.id ASC
       """)
-  List<PowerUser> findRankingWithCursor(
+  List<PowerUser> findRankingWithCursorAsc(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate,
+      @Param("cursorRank") Long cursorRank,
+      Pageable pageable
+  );
+
+  @Query("""
+      SELECT pu
+      FROM PowerUser pu
+      WHERE pu.period = :period
+        AND pu.baseDate = :baseDate
+        AND (:cursorRank IS NULL OR pu.rank < :cursorRank)
+      ORDER BY pu.rank DESC, pu.id DESC
+      """)
+  List<PowerUser> findRankingWithCursorDesc(
       @Param("period") Period period,
       @Param("baseDate") LocalDate baseDate,
       @Param("cursorRank") Long cursorRank,
