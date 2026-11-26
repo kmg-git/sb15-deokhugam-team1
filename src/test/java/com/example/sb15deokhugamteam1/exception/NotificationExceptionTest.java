@@ -1,5 +1,7 @@
 package com.example.sb15deokhugamteam1.exception;
 
+import com.example.sb15deokhugamteam1.exception.notification.NotificationForbiddenException;
+import com.example.sb15deokhugamteam1.exception.notification.NotificationNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -20,7 +22,7 @@ public class NotificationExceptionTest {
 
         NotificationNotFoundException exception = new NotificationNotFoundException(notificationId);
 
-        assertThat(exception.getErrorCode().getStatus().isEqualTo(HttpStatus.NOT_FOUND));
+        assertThat(exception.getErrorCode().getStatus().equals(HttpStatus.NOT_FOUND));
         assertThat(exception.getErrorCode().getCode()).isEqualTo(NOT_FOUND_CODE);
         assertThat(exception.getDetails()).containsEntry("notificationId", notificationId);
     }
