@@ -16,6 +16,10 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Comment c where c.id = :id and c.deletedAt is null")
+    Optional<Comment> findActiveByIdForUpdate(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Comment c where c.id = :id")
     Optional<Comment> findByIdForUpdate(@Param("id") UUID id);
 }

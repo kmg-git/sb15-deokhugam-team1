@@ -52,6 +52,7 @@ class CommentServiceTest {
         User author = mock(User.class);
         when(author.getId()).thenReturn(authorId);
         comment = new Comment(mock(Review.class), author, originalContent);
+        when(commentRepository.findActiveByIdForUpdate(commentId)).thenReturn(Optional.of(comment));
         when(commentRepository.findByIdForUpdate(commentId)).thenReturn(Optional.of(comment));
     }
 
@@ -63,7 +64,7 @@ class CommentServiceTest {
         UUID reviewId = UUID.randomUUID();
         CommentCreateRequest createRequest = new CommentCreateRequest(reviewId, authorId, originalContent);
         Review review = comment.getReview();
-        when(reviewRepository.findByIdForUpdate(reviewId)).thenReturn(Optional.of(review));
+        when(reviewRepository.findActiveByIdForUpdate(reviewId)).thenReturn(Optional.of(review));
         CommentDto expected = new CommentDto(
                 commentId, reviewId, authorId, "reader", originalContent, null, null);
         when(commentMapper.toDto(comment)).thenReturn(expected);
@@ -93,7 +94,7 @@ class CommentServiceTest {
         // given
         UUID reviewId = UUID.randomUUID();
         CommentCreateRequest createRequest = new CommentCreateRequest(reviewId, authorId, originalContent);
-        when(reviewRepository.findByIdForUpdate(reviewId)).thenReturn(Optional.empty());
+        when(reviewRepository.findActiveByIdForUpdate(reviewId)).thenReturn(Optional.empty());
 
         // when
         NoSuchElementException exception = assertThrows(NoSuchElementException.class,
@@ -111,7 +112,7 @@ class CommentServiceTest {
         UUID reviewId = UUID.randomUUID();
         CommentCreateRequest createRequest = new CommentCreateRequest(reviewId, authorId, originalContent);
         Review review = comment.getReview();
-        when(reviewRepository.findByIdForUpdate(reviewId)).thenReturn(Optional.of(review));
+        when(reviewRepository.findActiveByIdForUpdate(reviewId)).thenReturn(Optional.of(review));
         when(userRepository.findByIdAndDeletedAtIsNull(authorId)).thenReturn(Optional.empty());
 
         // when
@@ -157,7 +158,7 @@ class CommentServiceTest {
     @DisplayName("조회 가능한 댓글이 없으면 404 예외가 발생한다")
     void 업데이트_실패_02() {
         // given
-        when(commentRepository.findByIdForUpdate(commentId)).thenReturn(Optional.empty());
+        when(commentRepository.findActiveByIdForUpdate(commentId)).thenReturn(Optional.empty());
 
         // when & then
         CommentNotFoundException exception = assertThrows(CommentNotFoundException.class,
@@ -218,7 +219,7 @@ class CommentServiceTest {
     @DisplayName("댓글 조회에 실패하여 404 예외가 발생한다")
     void 논리삭제_실패_01() {
         // given
-        when(commentRepository.findByIdForUpdate(commentId)).thenReturn(Optional.empty());
+        when(commentRepository.findActiveByIdForUpdate(commentId)).thenReturn(Optional.empty());
 
         // when
         CommentNotFoundException exception = assertThrows(CommentNotFoundException.class,

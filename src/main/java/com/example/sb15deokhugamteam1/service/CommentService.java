@@ -29,10 +29,8 @@ public class CommentService {
 
     @Transactional
     public CommentDto create(CommentCreateRequest request) {
-        Review review = findReviewForUpdate(request.reviewId());
-        if (review.isDeleted()) {
-            throw reviewNotFound(request.reviewId());
-        }
+        Review review = reviewRepository.findActiveByIdForUpdate(request.reviewId())
+                .orElseThrow(() -> reviewNotFound(request.reviewId()));
         User author = userRepository.findByIdAndDeletedAtIsNull(request.userId())
                 .orElseThrow(() -> new UserNotFoundException(request.userId()));
 
@@ -71,15 +69,14 @@ public class CommentService {
         Comment comment = commentRepository.findByIdForUpdate(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
         verifyAuthor(comment, requesterId);
-        if (comment.getDeletedAt() == null) {
+        if (!comment.isDeleted()) {
             findReviewForUpdate(comment.getReview().getId()).decreaseCommentCount();
         }
         commentRepository.delete(comment);
     }
 
     private Comment findActiveCommentForUpdate(UUID commentId) {
-        return commentRepository.findByIdForUpdate(commentId)
-                .filter(comment -> comment.getDeletedAt() == null)
+        return commentRepository.findActiveByIdForUpdate(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
     }
 

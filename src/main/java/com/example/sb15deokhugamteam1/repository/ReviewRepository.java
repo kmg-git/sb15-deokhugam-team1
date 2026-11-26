@@ -16,10 +16,16 @@ import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID>{
 
-    // 댓글 서비스에서 리뷰의 댓글 수를 갱신할 때 사용한다.
+    //todo  댓글 서비스에서 임시로 사용중, 나중에 교체할 것
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Review r where r.id = :id")
     Optional<Review> findByIdForUpdate(@Param("id") UUID id);
+
+
+    //todo 댓글 서비스 임시용, 등록 시 삭제되지 않은 리뷰를 잠근다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Review r where r.id = :id and r.deletedAt is null")
+    Optional<Review> findActiveByIdForUpdate(@Param("id") UUID id);
 
     // 삭제되지 않은 리뷰 단건 조회
     Optional<Review> findByIdAndDeletedAtIsNull(UUID id);
