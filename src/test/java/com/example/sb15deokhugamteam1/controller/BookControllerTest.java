@@ -1,13 +1,25 @@
 package com.example.sb15deokhugamteam1.controller;
 
+import com.example.sb15deokhugamteam1.dto.page.CursorPageResponseBookDto;
+import com.example.sb15deokhugamteam1.dto.request.BookSearchCondition;
+import com.example.sb15deokhugamteam1.dto.request.BookSortField;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
+import com.example.sb15deokhugamteam1.dto.response.BookInfoDto;
+import com.example.sb15deokhugamteam1.exception.book.BookInfoFetchException;
+import com.example.sb15deokhugamteam1.exception.book.BookInfoNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
+import com.example.sb15deokhugamteam1.exception.book.IsbnNotRecognizedException;
+import com.example.sb15deokhugamteam1.exception.book.OcrFailedException;
+import com.example.sb15deokhugamteam1.service.BookInfoService;
 import com.example.sb15deokhugamteam1.service.BookService;
+import com.example.sb15deokhugamteam1.service.IsbnOcrService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -17,8 +29,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -28,6 +42,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +54,12 @@ class BookControllerTest {
 
     @MockitoBean
     BookService bookService;
+
+    @MockitoBean
+    BookInfoService bookInfoService;
+
+    @MockitoBean
+    IsbnOcrService isbnOcrService;
 
     private static final String VALID_JSON = """
             {"title":"클린 코드","author":"로버트 C. 마틴","description":"설명",
@@ -100,6 +121,17 @@ class BookControllerTest {
     }
 
     @Test
+    void 도서_상세_조회는_200() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(bookService.find(id)).willReturn(dto(id));
+
+        mockMvc.perform(get("/api/books/{bookId}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id.toString()))
+                .andExpect(jsonPath("$.title").value("클린 코드"));
+    }
+
+    @Test
     void 없는_도서_조회는_404() throws Exception {
         UUID id = UUID.randomUUID();
         given(bookService.find(id)).willThrow(new BookNotFoundException(id));
@@ -119,6 +151,56 @@ class BookControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BOOK_03"))
                 .andExpect(jsonPath("$.details.isbn").value("123"));
+    }
+
+    @Test
+    void 목록_조회는_파라미터가_없으면_제목_내림차순_50개() throws Exception {
+        given(bookService.search(any())).willReturn(
+                new CursorPageResponseBookDto(List.of(), null, null, 0, 0L, false));
+
+        mockMvc.perform(get("/api/books"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.content").isArray());
+
+        ArgumentCaptor<BookSearchCondition> captor = ArgumentCaptor.forClass(BookSearchCondition.class);
+        verify(bookService).search(captor.capture());
+        assertThat(captor.getValue().sortField()).isEqualTo(BookSortField.TITLE);
+        assertThat(captor.getValue().direction()).isEqualTo(Sort.Direction.DESC);
+        assertThat(captor.getValue().limit()).isEqualTo(50);
+    }
+
+    @Test
+    void 목록_조회_파라미터를_그대로_넘긴다() throws Exception {
+        given(bookService.search(any())).willReturn(
+                new CursorPageResponseBookDto(List.of(), null, null, 0, 0L, false));
+
+        mockMvc.perform(get("/api/books")
+                        .param("keyword", "자바").param("orderBy", "rating").param("direction", "ASC")
+                        .param("cursor", "4.5").param("after", "2026-11-01T00:00:00Z").param("limit", "10"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<BookSearchCondition> captor = ArgumentCaptor.forClass(BookSearchCondition.class);
+        verify(bookService).search(captor.capture());
+        assertThat(captor.getValue()).isEqualTo(new BookSearchCondition("자바", BookSortField.RATING,
+                Sort.Direction.ASC, "4.5", Instant.parse("2026-11-01T00:00:00Z"), 10));
+    }
+
+    @Test
+    void 지원하지_않는_정렬_기준이면_400과_BOOK_04() throws Exception {
+        mockMvc.perform(get("/api/books").param("orderBy", "price"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BOOK_04"))
+                .andExpect(jsonPath("$.details.orderBy").value("price"));
+        verify(bookService, never()).search(any());
+    }
+
+    @Test
+    void limit이_범위를_벗어나거나_direction이_틀리면_400() throws Exception {
+        mockMvc.perform(get("/api/books").param("limit", "0")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/books").param("limit", "101")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/books").param("direction", "UP")).andExpect(status().isBadRequest());
+        verify(bookService, never()).search(any());
     }
 
     @Test
@@ -148,5 +230,79 @@ class BookControllerTest {
         willThrow(new BookNotFoundException(id)).given(bookService).softDelete(id);
 
         mockMvc.perform(delete("/api/books/{bookId}", id)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void ISBN_정보_조회는_200이고_표지는_Base64로_내려간다() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willReturn(new BookInfoDto("클린 코드", "로버트 C. 마틴",
+                "설명", "인사이트", "2013-12-24", "9788966260959", new byte[]{1, 2, 3}));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("클린 코드"))
+                .andExpect(jsonPath("$.publishedDate").value("2013-12-24"))
+                .andExpect(jsonPath("$.thumbnailImage").value("AQID"));
+    }
+
+    @Test
+    void ISBN_정보가_없으면_404와_BOOK_06() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willThrow(new BookInfoNotFoundException("9788966260959"));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BOOK_06"));
+    }
+
+    @Test
+    void 카카오_호출이_실패하면_502와_BOOK_07() throws Exception {
+        given(bookInfoService.getByIsbn("9788966260959")).willThrow(new BookInfoFetchException("9788966260959"));
+
+        mockMvc.perform(get("/api/books/info").param("isbn", "9788966260959"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BOOK_07"));
+    }
+
+    @Test
+    void ISBN_파라미터가_없으면_400() throws Exception {
+        mockMvc.perform(get("/api/books/info")).andExpect(status().isBadRequest());
+        verify(bookInfoService, never()).getByIsbn(any());
+    }
+
+    private static MockMultipartFile barcode() {
+        return new MockMultipartFile("image", "book.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3});
+    }
+
+    @Test
+    void OCR로_ISBN을_읽으면_200과_ISBN_문자열() throws Exception {
+        given(isbnOcrService.recognize(any())).willReturn("9788966260959");
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+                .andExpect(content().string("9788966260959"));
+    }
+
+    @Test
+    void OCR로_ISBN을_못_찾으면_400과_BOOK_09() throws Exception {
+        given(isbnOcrService.recognize(any())).willThrow(new IsbnNotRecognizedException());
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BOOK_09"));
+    }
+
+    @Test
+    void OCR_서비스가_실패하면_502와_BOOK_10() throws Exception {
+        given(isbnOcrService.recognize(any())).willThrow(new OcrFailedException());
+
+        mockMvc.perform(multipart("/api/books/isbn/ocr").file(barcode()))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BOOK_10"));
+    }
+
+    @Test
+    void 이미지_파트가_없으면_400() throws Exception {
+        mockMvc.perform(multipart("/api/books/isbn/ocr")).andExpect(status().isBadRequest());
+        verify(isbnOcrService, never()).recognize(any());
     }
 }

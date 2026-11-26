@@ -1,27 +1,39 @@
 package com.example.sb15deokhugamteam1.service;
 
+import com.example.sb15deokhugamteam1.dto.page.CursorPageResponseBookDto;
 import com.example.sb15deokhugamteam1.dto.request.BookCreateRequest;
+import com.example.sb15deokhugamteam1.dto.request.BookSearchCondition;
+import com.example.sb15deokhugamteam1.dto.request.BookSortField;
 import com.example.sb15deokhugamteam1.dto.request.BookUpdateRequest;
 import com.example.sb15deokhugamteam1.dto.response.BookDto;
 import com.example.sb15deokhugamteam1.entity.Book;
 import com.example.sb15deokhugamteam1.exception.book.BookNotFoundException;
 import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
+import com.example.sb15deokhugamteam1.exception.book.InvalidCursorException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,6 +64,24 @@ class BookServiceTest {
     private static DataIntegrityViolationException violation(String constraintName) {
         return new DataIntegrityViolationException("unique violation",
                 new ConstraintViolationException("duplicate key", new SQLException(), constraintName));
+    }
+
+    static Stream<Arguments> cursorCases() {
+        return Stream.of(
+                Arguments.of(BookSortField.TITLE, "클린 코드", "클린 코드"),
+                Arguments.of(BookSortField.PUBLISHED_DATE, "2013-12-24", LocalDate.of(2013, 12, 24)),
+                Arguments.of(BookSortField.RATING, "4.5", 4.5),
+                Arguments.of(BookSortField.REVIEW_COUNT, "12", 12)
+        );
+    }
+
+    static Stream<Arguments> nextCursorCases() {
+        return Stream.of(
+                Arguments.of(BookSortField.TITLE, "가"),
+                Arguments.of(BookSortField.PUBLISHED_DATE, "2013-12-24"),
+                Arguments.of(BookSortField.RATING, "4.5"),
+                Arguments.of(BookSortField.REVIEW_COUNT, "7")
+        );
     }
 
     @Nested
@@ -129,6 +159,17 @@ class BookServiceTest {
     class FindAndUpdate {
 
         @Test
+        void 도서를_조회하면_DTO로_돌려준다() {
+            UUID id = UUID.randomUUID();
+            given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book()));
+
+            BookDto result = bookService.find(id);
+
+            assertThat(result.title()).isEqualTo("클린 코드");
+            assertThat(result.isbn()).isEqualTo("9788966260959");
+        }
+
+        @Test
         void 없는_도서를_조회하면_BookNotFoundException() {
             UUID id = UUID.randomUUID();
             given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.empty());
@@ -152,6 +193,92 @@ class BookServiceTest {
     }
 
     @Nested
+    class Search {
+
+        private Book bookAt(String title, double rating, Instant createdAt) {
+            Book book = new Book(title, "저자", "설명", "출판사", PUBLISHED, null, null);
+            ReflectionTestUtils.setField(book, "createdAt", createdAt);
+            ReflectionTestUtils.setField(book, "rating", rating);
+            return book;
+        }
+
+        private BookSearchCondition condition(BookSortField field, String cursor, Instant after, int limit) {
+            return new BookSearchCondition(null, field, Sort.Direction.DESC, cursor, after, limit);
+        }
+
+        @Test
+        void limit_보다_하나_더_오면_다음_페이지가_있고_마지막_책이_커서가_된다() {
+            Instant t1 = Instant.parse("2026-11-01T00:00:00Z");
+            Instant t2 = Instant.parse("2026-11-02T00:00:00Z");
+            Instant t3 = Instant.parse("2026-11-03T00:00:00Z");
+            given(bookRepository.search(any(), any())).willReturn(
+                    List.of(bookAt("다", 4.0, t3), bookAt("나", 3.0, t2), bookAt("가", 2.0, t1)));
+            given(bookRepository.countByKeyword(null)).willReturn(3L);
+
+            CursorPageResponseBookDto result = bookService.search(condition(BookSortField.TITLE, null, null, 2));
+
+            assertThat(result.content()).extracting(BookDto::title).containsExactly("다", "나");
+            assertThat(result.hasNext()).isTrue();
+            assertThat(result.nextCursor()).isEqualTo("나");
+            assertThat(result.nextAfter()).isEqualTo(t2);
+            assertThat(result.size()).isEqualTo(2);
+            assertThat(result.totalElements()).isEqualTo(3L);
+        }
+
+        @Test
+        void 마지막_페이지면_다음_커서가_없다() {
+            given(bookRepository.search(any(), any())).willReturn(
+                    List.of(bookAt("가", 2.0, Instant.parse("2026-11-01T00:00:00Z"))));
+
+            CursorPageResponseBookDto result = bookService.search(condition(BookSortField.TITLE, null, null, 2));
+
+            assertThat(result.hasNext()).isFalse();
+            assertThat(result.nextCursor()).isNull();
+            assertThat(result.nextAfter()).isNull();
+        }
+
+
+
+        @ParameterizedTest(name = "{0} 정렬: 커서 \"{1}\" → {2}")
+        @MethodSource("com.example.sb15deokhugamteam1.service.BookServiceTest#cursorCases")
+        void 정렬_기준마다_커서를_알맞은_타입으로_바꾼다(BookSortField field, String cursor, Object expected) {
+            given(bookRepository.search(any(), any())).willReturn(List.of());
+
+            bookService.search(condition(field, cursor, Instant.parse("2026-11-01T00:00:00Z"), 10));
+
+            verify(bookRepository).search(any(), org.mockito.ArgumentMatchers.eq(expected));
+        }
+
+        @ParameterizedTest(name = "{0} 정렬이면 다음 커서는 {1}")
+        @MethodSource("com.example.sb15deokhugamteam1.service.BookServiceTest#nextCursorCases")
+        void 정렬_기준마다_마지막_책의_값으로_다음_커서를_만든다(BookSortField field, String expectedCursor) {
+            Book first = bookAt("가", 4.5, Instant.parse("2026-11-02T00:00:00Z"));
+            Book second = bookAt("나", 4.5, Instant.parse("2026-11-01T00:00:00Z"));
+            ReflectionTestUtils.setField(first, "reviewCount", 7);
+            given(bookRepository.search(any(), any())).willReturn(List.of(first, second));
+
+            CursorPageResponseBookDto result = bookService.search(condition(field, null, null, 1));
+
+            assertThat(result.nextCursor()).isEqualTo(expectedCursor);
+        }
+
+        @Test
+        void 커서를_정렬_기준_타입으로_읽을_수_없으면_InvalidCursorException() {
+            Instant after = Instant.parse("2026-11-01T00:00:00Z");
+
+            assertThatThrownBy(() -> bookService.search(condition(BookSortField.REVIEW_COUNT, "많음", after, 10)))
+                    .isInstanceOf(InvalidCursorException.class);
+        }
+
+        @Test
+        void 커서와_after_중_하나만_오면_InvalidCursorException() {
+            assertThatThrownBy(() -> bookService.search(condition(BookSortField.TITLE, "가", null, 10)))
+                    .isInstanceOf(InvalidCursorException.class);
+            verify(bookRepository, never()).search(any(), any());
+        }
+    }
+
+    @Nested
     class Delete {
 
         @Test
@@ -170,7 +297,7 @@ class BookServiceTest {
         void 물리_삭제는_논리_삭제된_도서도_지운다() {
             UUID id = UUID.randomUUID();
             Book book = book();
-            book.softDelete(java.time.Instant.now());
+            book.softDelete(Instant.now());
             given(bookRepository.findById(id)).willReturn(Optional.of(book));
 
             bookService.hardDelete(id);
