@@ -64,13 +64,13 @@ class PowerUserQueryServiceTest {
         first.getCommentCount()
     );
 
-    given(powerUserRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(powerUserRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first, second));
     given(powerUserMapper.toDto(first)).willReturn(firstDto);
 
     // when
     CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then
@@ -111,13 +111,13 @@ class PowerUserQueryServiceTest {
 
     given(powerUserRepository.findTopByPeriodOrderByBaseDateDesc(period))
         .willReturn(Optional.of(latestHolder));
-    given(powerUserRepository.findRankingWithCursor(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
+    given(powerUserRepository.findRankingWithCursorAsc(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first));
     given(powerUserMapper.toDto(first)).willReturn(firstDto);
 
     // when
     CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -141,7 +141,7 @@ class PowerUserQueryServiceTest {
 
     // when
     CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -150,7 +150,8 @@ class PowerUserQueryServiceTest {
     assertThat(response.nextCursor()).isNull();
     assertThat(response.nextAfter()).isNull();
     assertThat(response.size()).isEqualTo(size);
-    then(powerUserRepository).should(never()).findRankingWithCursor(any(), any(), any(), any());
+    then(powerUserRepository).should(never()).findRankingWithCursorAsc(any(), any(), any(), any());
+    then(powerUserRepository).should(never()).findRankingWithCursorDesc(any(), any(), any(), any());
   }
 
   @Test
@@ -161,12 +162,12 @@ class PowerUserQueryServiceTest {
     LocalDate baseDate = LocalDate.of(2026, 11, 24);
     int size = 10;
 
-    given(powerUserRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(powerUserRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of());
 
     // when
     CursorPageResponsePowerUserDto response = powerUserQueryService.getPowerUsers(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then
@@ -177,7 +178,6 @@ class PowerUserQueryServiceTest {
     assertThat(response.size()).isEqualTo(size);
   }
 
-  // 테스트용 PowerUser 생성 헬퍼 메서드
   private PowerUser createPowerUser(
       Period period,
       LocalDate baseDate,

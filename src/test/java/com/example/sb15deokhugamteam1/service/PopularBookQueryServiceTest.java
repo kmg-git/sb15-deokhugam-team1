@@ -67,14 +67,14 @@ class PopularBookQueryServiceTest {
         second.getReviewCount(), second.getRating(), second.getCreatedAt()
     );
 
-    given(popularBookRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(popularBookRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first, second, third));
     given(popularBookMapper.toDto(first)).willReturn(firstDto);
     given(popularBookMapper.toDto(second)).willReturn(secondDto);
 
     // when
     CursorPageResponsePopularBookDto response = popularBookQueryService.getPopularBooks(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then
@@ -109,13 +109,13 @@ class PopularBookQueryServiceTest {
 
     given(popularBookRepository.findTopByPeriodOrderByBaseDateDesc(period))
         .willReturn(Optional.of(latestHolder));
-    given(popularBookRepository.findRankingWithCursor(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
+    given(popularBookRepository.findRankingWithCursorAsc(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first));
     given(popularBookMapper.toDto(first)).willReturn(firstDto);
 
     // when
     CursorPageResponsePopularBookDto response = popularBookQueryService.getPopularBooks(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -138,7 +138,7 @@ class PopularBookQueryServiceTest {
 
     // when
     CursorPageResponsePopularBookDto response = popularBookQueryService.getPopularBooks(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -147,7 +147,8 @@ class PopularBookQueryServiceTest {
     assertThat(response.nextCursor()).isNull();
     assertThat(response.nextAfter()).isNull();
     assertThat(response.size()).isEqualTo(size);
-    then(popularBookRepository).should(never()).findRankingWithCursor(any(), any(), any(), any());
+    then(popularBookRepository).should(never()).findRankingWithCursorAsc(any(), any(), any(), any());
+    then(popularBookRepository).should(never()).findRankingWithCursorDesc(any(), any(), any(), any());
   }
 
   @Test
@@ -158,12 +159,12 @@ class PopularBookQueryServiceTest {
     LocalDate baseDate = LocalDate.of(2026, 11, 24);
     int size = 10;
 
-    given(popularBookRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(popularBookRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of());
 
     // when
     CursorPageResponsePopularBookDto response = popularBookQueryService.getPopularBooks(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then

@@ -60,13 +60,13 @@ class PopularReviewQueryServiceTest {
         first.getLikeCount(), first.getCommentCount()
     );
 
-    given(popularReviewRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(popularReviewRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first, second));
     given(popularReviewMapper.toDto(first)).willReturn(firstDto);
 
     // when
     CursorPageResponsePopularReviewDto response = popularReviewQueryService.getPopularReviews(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then
@@ -101,13 +101,13 @@ class PopularReviewQueryServiceTest {
 
     given(popularReviewRepository.findTopByPeriodOrderByBaseDateDesc(period))
         .willReturn(Optional.of(latestHolder));
-    given(popularReviewRepository.findRankingWithCursor(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
+    given(popularReviewRepository.findRankingWithCursorAsc(period, latestBaseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of(first));
     given(popularReviewMapper.toDto(first)).willReturn(firstDto);
 
     // when
     CursorPageResponsePopularReviewDto response = popularReviewQueryService.getPopularReviews(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -130,7 +130,7 @@ class PopularReviewQueryServiceTest {
 
     // when
     CursorPageResponsePopularReviewDto response = popularReviewQueryService.getPopularReviews(
-        period, null, null, size
+        period, null, null, "ASC", size
     );
 
     // then
@@ -138,7 +138,8 @@ class PopularReviewQueryServiceTest {
     assertThat(response.hasNext()).isFalse();
     assertThat(response.nextCursor()).isNull();
     assertThat(response.nextAfter()).isNull();
-    then(popularReviewRepository).should(never()).findRankingWithCursor(any(), any(), any(), any());
+    then(popularReviewRepository).should(never()).findRankingWithCursorAsc(any(), any(), any(), any());
+    then(popularReviewRepository).should(never()).findRankingWithCursorDesc(any(), any(), any(), any());
   }
 
   @Test
@@ -149,12 +150,12 @@ class PopularReviewQueryServiceTest {
     LocalDate baseDate = LocalDate.of(2026, 11, 24);
     int size = 10;
 
-    given(popularReviewRepository.findRankingWithCursor(period, baseDate, null, PageRequest.of(0, size + 1)))
+    given(popularReviewRepository.findRankingWithCursorAsc(period, baseDate, null, PageRequest.of(0, size + 1)))
         .willReturn(List.of());
 
     // when
     CursorPageResponsePopularReviewDto response = popularReviewQueryService.getPopularReviews(
-        period, baseDate, null, size
+        period, baseDate, null, "ASC", size
     );
 
     // then
