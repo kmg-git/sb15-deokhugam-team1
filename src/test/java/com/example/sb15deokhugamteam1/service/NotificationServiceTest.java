@@ -4,6 +4,9 @@ import com.example.sb15deokhugamteam1.entity.Notification;
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.Review;
 import com.example.sb15deokhugamteam1.entity.User;
+import com.example.sb15deokhugamteam1.event.CommentCreatedEvent;
+import com.example.sb15deokhugamteam1.event.PopularReviewRankedEvent;
+import com.example.sb15deokhugamteam1.event.ReviewLikedEvent;
 import com.example.sb15deokhugamteam1.repository.ReviewRepository;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +32,6 @@ public class NotificationServiceTest {
     private static final UUID AUTHOR_ID = UUID.randomUUID();
     private static final UUID ACTOR_ID = UUID.randomUUID();
     private static final String NICKNAME = "닉네임";
-    private static final String COMMENT_CONTENT = "좋은 리뷰네요";
     private static final int RANK = 3;
 
     @Mock
@@ -74,7 +76,7 @@ public class NotificationServiceTest {
     @DisplayName("댓글 이벤트를 받으면 리뷰 작성자에게 댓글 알림을 보냄")
     void notificationComment() {
         notificationService.notifyComment(
-                new CommentCreatedEvent(REVIEW_ID, AUTHOR_ID, ACTOR_ID, NICKNAME, COMMENT_CONTENT)
+                new CommentCreatedEvent(REVIEW_ID, AUTHOR_ID, ACTOR_ID, NICKNAME)
         );
 
         Notification notification = captureSaved();
