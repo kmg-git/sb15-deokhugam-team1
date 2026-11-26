@@ -17,6 +17,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,15 +34,17 @@ public class BookService {
     private static final String ACTIVE_ISBN_INDEX = "uq_books_active_isbn";
 
     private final BookRepository bookRepository;
+    private final BookThumbnailService bookThumbnailService;
 
     @Transactional
-    public BookDto create(BookCreateRequest request) {
+    public BookDto create(BookCreateRequest request, MultipartFile thumbnailImage) {
         String isbn = IsbnNormalizer.normalize(request.isbn());
         if (isbn != null && bookRepository.existsByIsbnAndDeletedAtIsNull(isbn)) {
             throw new DuplicateIsbnException(isbn);
         }
 
-        // TODO S3 연동 후 표지 이미지 URL 저장
+        // 중복 검사를 통과한 뒤에 올려야 실패할 요청 때문에 파일이 쌓이지 않는다
+        String thumbnailUrl = bookThumbnailService.store(thumbnailImage);
         Book book = new Book(
                 request.title(),
                 request.author(),
@@ -49,7 +52,7 @@ public class BookService {
                 request.publisher(),
                 request.publishedDate(),
                 isbn,
-                null
+                thumbnailUrl
         );
 
         try {
@@ -91,8 +94,13 @@ public class BookService {
     }
 
     @Transactional
-    public BookDto update(UUID bookId, BookUpdateRequest request) {
+    public BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage) {
         Book book = getActiveBook(bookId);
+        String newThumbnailUrl = bookThumbnailService.store(thumbnailImage);
+        if (newThumbnailUrl != null) {
+            bookThumbnailService.deleteAfterCommit(book.getThumbnailUrl());
+            book.changeThumbnailUrl(newThumbnailUrl);
+        }
         book.update(
                 request.title(),
                 request.author(),
@@ -111,12 +119,13 @@ public class BookService {
         getActiveBook(bookId).softDelete(Instant.now());
     }
 
-    /** 물리 삭제: 논리 삭제된 도서도 지울 수 있다 */
+    /** 물리 삭제: 논리 삭제된 도서도 지울 수 있다. 표지 파일도 함께 지운다 (논리 삭제는 복구할 수 있어서 남겨 둔다) */
     @Transactional
     public void hardDelete(UUID bookId) {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new BookNotFoundException(bookId));
         bookRepository.delete(book);
+        bookThumbnailService.deleteAfterCommit(book.getThumbnailUrl());
     }
 
     private Book getActiveBook(UUID bookId) {

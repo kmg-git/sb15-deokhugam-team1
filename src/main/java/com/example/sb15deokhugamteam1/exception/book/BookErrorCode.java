@@ -16,7 +16,8 @@ public enum BookErrorCode implements ErrorCode {
     BOOK_INFO_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "BOOK_07", "도서 정보를 가져오지 못했습니다. 잠시 후 다시 시도해주세요."),
     INVALID_IMAGE(HttpStatus.BAD_REQUEST, "BOOK_08", "이미지 파일이 비어 있거나 읽을 수 없습니다."),
     ISBN_NOT_RECOGNIZED(HttpStatus.BAD_REQUEST, "BOOK_09", "이미지에서 ISBN을 인식하지 못했습니다. 바코드가 잘 보이게 다시 찍어주세요."),
-    OCR_FAILED(HttpStatus.BAD_GATEWAY, "BOOK_10", "이미지 인식 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.");
+    OCR_FAILED(HttpStatus.BAD_GATEWAY, "BOOK_10", "이미지 인식 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해주세요."),
+    THUMBNAIL_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "BOOK_11", "표지 이미지를 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String code;
