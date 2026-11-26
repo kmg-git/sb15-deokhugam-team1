@@ -2,6 +2,7 @@ package com.example.sb15deokhugamteam1.controller;
 
 import com.example.sb15deokhugamteam1.dto.request.UserLoginRequest;
 import com.example.sb15deokhugamteam1.dto.request.UserRegisterRequest;
+import com.example.sb15deokhugamteam1.dto.request.UserUpdateRequest;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.service.UserService;
 import jakarta.validation.Valid;
@@ -30,7 +31,16 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserDto> login(@PathVariable UUID userId) {
+    public ResponseEntity<UserDto> find(@PathVariable UUID userId) {
         return ResponseEntity.status(HttpStatus.OK).body(userService.find(userId));
+    }
+
+    @PatchMapping("/{userId}")
+    public ResponseEntity<UserDto> update(
+            @PathVariable UUID userId,
+            @RequestHeader("Deokhugam-Request-User-ID") UUID requestUserId,
+            @Valid @RequestBody UserUpdateRequest updateRequest
+    ) {
+        return ResponseEntity.ok(userService.update(userId, requestUserId, updateRequest));
     }
 }
