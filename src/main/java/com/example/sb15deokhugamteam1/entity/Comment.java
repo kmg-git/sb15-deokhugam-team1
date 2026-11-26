@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Table(name = "comments")
 @Entity
@@ -28,4 +28,13 @@ public class Comment extends BaseUpdatableEntity{
 
     protected Comment(){}
 
+    public Comment(Review review, User user, String content) {
+        this.review = review;
+        this.user = user;
+        this.content = content;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }
