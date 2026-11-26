@@ -3,6 +3,7 @@ package com.example.sb15deokhugamteam1.controller;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
 import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
+import com.example.sb15deokhugamteam1.exception.user.UserForbiddenException;
 import com.example.sb15deokhugamteam1.exception.user.UserNotFoundException;
 import com.example.sb15deokhugamteam1.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -138,6 +140,67 @@ public class UserControllerTest {
         given(userService.find(userId)).willThrow(new UserNotFoundException(userId));
 
         mockMvc.perform(get("/api/users/{userId}", userId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_02"));
+    }
+
+    /** 닉네임 수정 테스트 **/
+
+    @Test
+    void 수정_성공하면_200() throws Exception {
+        UUID userId = userDto.id();
+        UserDto updated = new UserDto(userId, "test@test.com", "newnick", Instant.now());
+        given(userService.update(any(), any(), any())).willReturn(updated);
+
+        mockMvc.perform(patch("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"nickname":"newnick"}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("newnick"));
+    }
+
+    @Test
+    void 수정_닉네임이_한글자면_400() throws Exception {
+        UUID userId = userDto.id();
+
+        mockMvc.perform(patch("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"nickname":"a"}
+                        """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 남의_닉네임을_수정하면_403() throws Exception {
+        UUID userId = userDto.id();
+        given(userService.update(any(), any(), any())).willThrow(new UserForbiddenException(userId));
+
+        mockMvc.perform(patch("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"nickname":"newnick"}
+                        """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_03"));
+    }
+
+    @Test
+    void 없는_유저를_수정하면_404() throws Exception {
+        UUID userId = UUID.randomUUID();
+        given(userService.update(any(), any(), any())).willThrow(new UserNotFoundException(userId));
+
+        mockMvc.perform(patch("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"nickname":"newnick"}
+                        """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_02"));
     }
