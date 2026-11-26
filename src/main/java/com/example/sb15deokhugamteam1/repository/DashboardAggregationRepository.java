@@ -33,9 +33,13 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
     String getUserNickname();
     String getReviewContent();
     Double getReviewRating();
-    Long getLikeCount();
     Long getPeriodCommentCount();
     Instant getReviewCreatedAt();
+  }
+
+  interface ReviewLikeCountRaw {
+    UUID getReviewId();
+    Long getLikeCount();
   }
 
   interface UserReviewActivityRaw {
@@ -43,8 +47,14 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
     String getNickname();
     Instant getUserCreatedAt();
     UUID getReviewId();
-    Long getReviewLikeCount();
     Long getReviewPeriodCommentCount();
+  }
+
+  interface UserLikeCountRaw {
+    UUID getUserId();
+    String getNickname();
+    Instant getUserCreatedAt();
+    Long getLikeCount();
   }
 
   interface UserCommentCountRaw {
@@ -92,7 +102,6 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
         u.nickname AS userNickname,
         r.content AS reviewContent,
         CAST(r.rating AS double) AS reviewRating,
-        CAST(r.likeCount AS long) AS likeCount,
         COUNT(c.id) AS periodCommentCount,
         r.createdAt AS reviewCreatedAt
       FROM Review r
@@ -109,9 +118,25 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
         AND (:endExclusive IS NULL OR r.createdAt < :endExclusive)
       GROUP BY
         r.id, b.id, b.title, b.thumbnailUrl,
-        u.id, u.nickname, r.content, r.rating, r.likeCount, r.createdAt
+        u.id, u.nickname, r.content, r.rating, r.createdAt
       """)
   List<PopularReviewRaw> findPopularReviewRaw(
+      @Param("startInclusive") Instant startInclusive,
+      @Param("endExclusive") Instant endExclusive
+  );
+
+  @Query("""
+      SELECT
+        rl.review.id AS reviewId,
+        COUNT(rl.id) AS likeCount
+      FROM ReviewLike rl
+      JOIN rl.review r
+      WHERE r.deletedAt IS NULL
+        AND (:startInclusive IS NULL OR rl.createdAt >= :startInclusive)
+        AND (:endExclusive IS NULL OR rl.createdAt < :endExclusive)
+      GROUP BY rl.review.id
+      """)
+  List<ReviewLikeCountRaw> findPeriodReviewLikeCountsRaw(
       @Param("startInclusive") Instant startInclusive,
       @Param("endExclusive") Instant endExclusive
   );
@@ -125,7 +150,6 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
         u.nickname AS nickname,
         u.createdAt AS userCreatedAt,
         r.id AS reviewId,
-        CAST(r.likeCount AS long) AS reviewLikeCount,
         COUNT(c.id) AS reviewPeriodCommentCount
       FROM Review r
       JOIN r.user u
@@ -137,9 +161,29 @@ public interface DashboardAggregationRepository extends JpaRepository<Review, UU
         AND u.deletedAt IS NULL
         AND (:startInclusive IS NULL OR r.createdAt >= :startInclusive)
         AND (:endExclusive IS NULL OR r.createdAt < :endExclusive)
-      GROUP BY u.id, u.nickname, u.createdAt, r.id, r.likeCount
+      GROUP BY u.id, u.nickname, u.createdAt, r.id
       """)
   List<UserReviewActivityRaw> findUserReviewActivityRaw(
+      @Param("startInclusive") Instant startInclusive,
+      @Param("endExclusive") Instant endExclusive
+  );
+
+  @Query("""
+      SELECT
+        u.id AS userId,
+        u.nickname AS nickname,
+        u.createdAt AS userCreatedAt,
+        COUNT(rl.id) AS likeCount
+      FROM ReviewLike rl
+      JOIN rl.user u
+      JOIN rl.review r
+      WHERE u.deletedAt IS NULL
+        AND r.deletedAt IS NULL
+        AND (:startInclusive IS NULL OR rl.createdAt >= :startInclusive)
+        AND (:endExclusive IS NULL OR rl.createdAt < :endExclusive)
+      GROUP BY u.id, u.nickname, u.createdAt
+      """)
+  List<UserLikeCountRaw> findUserParticipatedLikeCountsRaw(
       @Param("startInclusive") Instant startInclusive,
       @Param("endExclusive") Instant endExclusive
   );

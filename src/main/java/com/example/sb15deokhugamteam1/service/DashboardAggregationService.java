@@ -7,7 +7,9 @@ import com.example.sb15deokhugamteam1.entity.PowerUser;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.PopularBookRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.PopularReviewRaw;
+import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.ReviewLikeCountRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserCommentCountRaw;
+import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserLikeCountRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserReviewActivityRaw;
 import com.example.sb15deokhugamteam1.repository.PopularBookRepository;
 import com.example.sb15deokhugamteam1.repository.PopularReviewRepository;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,12 +119,13 @@ public class DashboardAggregationService {
 
     List<PopularReviewRaw> rawList =
         aggregationRepository.findPopularReviewRaw(startInclusive, endExclusive);
+    Map<UUID, Long> reviewLikeCountMap = getReviewLikeCountMap(startInclusive, endExclusive);
 
     record ScoredReview(PopularReviewRaw raw, long likeCount, long commentCount, double score) {}
 
     List<ScoredReview> ranked = rawList.stream()
         .map(raw -> {
-          long likeCount = raw.getLikeCount() != null ? raw.getLikeCount() : 0L;
+          long likeCount = reviewLikeCountMap.getOrDefault(raw.getReviewId(), 0L);
           long commentCount = raw.getPeriodCommentCount() != null ? raw.getPeriodCommentCount() : 0L;
           double score = (likeCount * 0.3) + (commentCount * 0.7);
           return new ScoredReview(raw, likeCount, commentCount, score);
@@ -173,6 +177,9 @@ public class DashboardAggregationService {
 
     List<UserReviewActivityRaw> reviewActivities =
         aggregationRepository.findUserReviewActivityRaw(startInclusive, endExclusive);
+    Map<UUID, Long> reviewLikeCountMap = getReviewLikeCountMap(startInclusive, endExclusive);
+    List<UserLikeCountRaw> participatedLikes =
+        aggregationRepository.findUserParticipatedLikeCountsRaw(startInclusive, endExclusive);
     List<UserCommentCountRaw> commentCounts =
         aggregationRepository.findUserCommentCountsRaw(startInclusive, endExclusive);
 
@@ -187,12 +194,18 @@ public class DashboardAggregationService {
       UUID userId = row.getUserId();
       userInfoMap.putIfAbsent(userId, new UserInfo(row.getNickname(), row.getUserCreatedAt()));
 
-      long reviewLikes = row.getReviewLikeCount() != null ? row.getReviewLikeCount() : 0L;
+      long reviewLikes = reviewLikeCountMap.getOrDefault(row.getReviewId(), 0L);
       long reviewComments = row.getReviewPeriodCommentCount() != null ? row.getReviewPeriodCommentCount() : 0L;
       double reviewPopularScore = (reviewLikes * 0.3) + (reviewComments * 0.7);
 
       reviewScoreSumMap.merge(userId, reviewPopularScore, Double::sum);
-      likeCountMap.merge(userId, reviewLikes, Long::sum);
+    }
+
+    for (UserLikeCountRaw row : participatedLikes) {
+      UUID userId = row.getUserId();
+      userInfoMap.putIfAbsent(userId, new UserInfo(row.getNickname(), row.getUserCreatedAt()));
+      long likes = row.getLikeCount() != null ? row.getLikeCount() : 0L;
+      likeCountMap.merge(userId, likes, Long::sum);
     }
 
     for (UserCommentCountRaw row : commentCounts) {
@@ -252,6 +265,16 @@ public class DashboardAggregationService {
         .toList();
 
     powerUserRepository.saveAll(snapshots);
+  }
+
+  private Map<UUID, Long> getReviewLikeCountMap(Instant startInclusive, Instant endExclusive) {
+    return aggregationRepository.findPeriodReviewLikeCountsRaw(startInclusive, endExclusive)
+        .stream()
+        .collect(Collectors.toMap(
+            ReviewLikeCountRaw::getReviewId,
+            raw -> raw.getLikeCount() != null ? raw.getLikeCount() : 0L,
+            Long::sum
+        ));
   }
 
   /**
