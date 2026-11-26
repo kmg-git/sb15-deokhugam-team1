@@ -8,9 +8,9 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
- * AWS S3 에 저장한다.
- * 키는 코드에 없고, AWS SDK 가 환경변수(AWS_ACCESS_KEY_ID 등)나 ECS 작업 역할에서 알아서 찾는다.
- * 버킷의 books/ 경로는 공개 읽기로 열어 둬야 브라우저가 주소로 바로 표지를 볼 수 있다.
+ * AWS S3 저장
+ * - 키는 코드에 없음. AWS SDK 가 환경변수(AWS_ACCESS_KEY_ID 등) 또는 ECS 작업 역할에서 자동 조회
+ * - 버킷 books/ 경로 공개 읽기 필요 (브라우저에서 주소로 바로 표지 열람)
  */
 @Slf4j
 public class S3ImageStorage implements ImageStorage {
@@ -40,7 +40,7 @@ public class S3ImageStorage implements ImageStorage {
         return baseUrl + key;
     }
 
-    /** 지우기는 정리 작업이라, 실패해도 요청 자체를 실패시키지 않고 로그만 남긴다 */
+    /** 삭제는 정리 작업 → 실패해도 요청은 성공 처리, 로그만 남김 */
     @Override
     public void delete(String url) {
         if (url == null || !url.startsWith(baseUrl)) {

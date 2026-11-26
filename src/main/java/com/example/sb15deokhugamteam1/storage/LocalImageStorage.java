@@ -8,8 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * 내 컴퓨터 폴더에 저장한다 (S3 버킷 설정이 없을 때 쓰는 개발용).
- * 저장한 파일은 LocalFileWebConfig 가 /files/** 주소로 보여준다.
+ * 로컬 폴더 저장 (S3 버킷 미설정 시 쓰는 개발용)
+ * 저장 파일은 LocalFileWebConfig 가 /files/** 주소로 제공
  */
 @Slf4j
 public class LocalImageStorage implements ImageStorage {
@@ -53,7 +53,7 @@ public class LocalImageStorage implements ImageStorage {
         }
     }
 
-    /** ../ 같은 경로로 저장 폴더 밖을 건드리지 못하게 막는다. 밖이면 null */
+    /** ../ 등으로 저장 폴더 밖 접근 차단. 밖이면 null */
     private Path resolve(String key) {
         Path target = root.resolve(key).normalize();
         return target.startsWith(root) && !target.equals(root) ? target : null;

@@ -43,7 +43,7 @@ public class BookService {
             throw new DuplicateIsbnException(isbn);
         }
 
-        // 중복 검사를 통과한 뒤에 올려야 실패할 요청 때문에 파일이 쌓이지 않는다
+        // 중복 검사 통과 후 업로드 (실패 요청으로 파일 쌓임 방지)
         String thumbnailUrl = bookThumbnailService.store(thumbnailImage);
         Book book = new Book(
                 request.title(),
@@ -119,7 +119,7 @@ public class BookService {
         getActiveBook(bookId).softDelete(Instant.now());
     }
 
-    /** 물리 삭제: 논리 삭제된 도서도 지울 수 있다. 표지 파일도 함께 지운다 (논리 삭제는 복구할 수 있어서 남겨 둔다) */
+    /** 물리 삭제: 논리 삭제된 도서도 삭제 가능. 표지 파일도 함께 삭제 (논리 삭제는 복구 대비 유지) */
     @Transactional
     public void hardDelete(UUID bookId) {
         Book book = bookRepository.findById(bookId)

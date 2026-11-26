@@ -24,8 +24,8 @@ final class ImageSignature {
     }
 
     /**
-     * 책 표지로 쓸 수 있는(브라우저가 보여주는) 형식이면 확장자를 돌려준다: jpg, png, gif, webp
-     * BMP·TIFF 는 브라우저에서 안 보일 수 있어서 표지로는 받지 않는다
+     * 표지용(브라우저 표시 가능) 형식이면 확장자 반환: jpg, png, gif, webp
+     * BMP·TIFF 는 브라우저 미지원 가능성 → 표지로 미허용
      */
     static Optional<String> webImageExtension(byte[] b) {
         if (startsWith(b, 0xFF, 0xD8, 0xFF)) return Optional.of("jpg");

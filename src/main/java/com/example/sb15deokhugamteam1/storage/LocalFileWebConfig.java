@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
 
-/** 로컬 폴더 보관소일 때만, 저장한 이미지를 /files/** 주소로 브라우저에 보여준다 */
+/** 로컬 폴더 보관소일 때만 저장 이미지를 /files/** 주소로 제공 */
 @Configuration
 public class LocalFileWebConfig implements WebMvcConfigurer {
 

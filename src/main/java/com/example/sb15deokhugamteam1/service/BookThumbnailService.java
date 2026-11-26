@@ -14,13 +14,12 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * 도서 표지 이미지 저장·삭제.
+ * 도서 표지 이미지 저장·삭제
  *
- * <p>파일 저장(S3)과 DB 저장은 따로라서, 둘 중 하나만 성공하면 안 된다.
- * 그래서 DB 트랜잭션 결과를 보고 파일을 정리한다.
+ * <p>파일 저장(S3)과 DB 저장이 별개 → DB 트랜잭션 결과 기준으로 파일 정리
  * <ul>
- *   <li>새로 올린 파일: DB 가 롤백되면 지운다 (주인 없는 파일 방지)</li>
- *   <li>예전 파일: DB 커밋이 끝난 뒤에 지운다 (롤백됐는데 파일만 사라지는 것 방지)</li>
+ *   <li>새로 올린 파일: DB 롤백 시 삭제 (주인 없는 파일 방지)</li>
+ *   <li>예전 파일: DB 커밋 후 삭제 (롤백인데 파일만 사라짐 방지)</li>
  * </ul>
  */
 @Component
@@ -31,7 +30,7 @@ public class BookThumbnailService {
 
     private final ImageStorage imageStorage;
 
-    /** 이미지가 없거나 비어 있으면 null. 있으면 검사 후 저장하고 주소를 돌려준다 */
+    /** 이미지 없음·빈 파일 → null. 있으면 검사 후 저장, 주소 반환 */
     public String store(MultipartFile image) {
         if (image == null || image.isEmpty()) {
             return null;
@@ -58,7 +57,7 @@ public class BookThumbnailService {
         return url;
     }
 
-    /** 지금 트랜잭션이 커밋된 뒤에 지운다. 트랜잭션 밖이면 바로 지운다 */
+    /** 트랜잭션 커밋 후 삭제. 트랜잭션 밖이면 즉시 삭제 */
     public void deleteAfterCommit(String url) {
         if (url == null) {
             return;
