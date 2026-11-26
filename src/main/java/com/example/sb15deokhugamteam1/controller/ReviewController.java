@@ -50,9 +50,10 @@ public class ReviewController {
     // 리뷰 상세 조회
     @GetMapping("/{reviewId}")
     public ResponseEntity<ReviewDto> get(
-            @PathVariable UUID reviewId
+            @PathVariable UUID reviewId,
+            @RequestHeader("Deokhugam-Request-User-ID") UUID userId
     ) {
-        return ResponseEntity.ok(reviewService.get(reviewId));
+        return ResponseEntity.ok(reviewService.get(reviewId, userId));
     }
 
     // 리뷰 수정

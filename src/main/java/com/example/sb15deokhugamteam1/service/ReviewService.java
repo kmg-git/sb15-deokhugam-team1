@@ -137,8 +137,6 @@ public class ReviewService {
                 request.getRating()
         );
 
-        // 응답 DTO 생성
-        ReviewDto reviewDto = ReviewMapper.toDto(review);
 
         // 별점이 변경되었을 때만 도서 통계 갱신
         if (request.getRating() != null
@@ -158,7 +156,11 @@ public class ReviewService {
             }
         }
 
-        return reviewDto;
+        boolean likedByMe = reviewLikeRepository
+                .findByReview_IdAndUser_Id(reviewId, userId)
+                .isPresent();
+
+        return ReviewMapper.toDto(review, likedByMe);
     }
 
     // 리뷰 삭제
@@ -203,16 +205,20 @@ public class ReviewService {
 
     // 리뷰 단건 조회
     @Transactional(readOnly = true)
-    public ReviewDto get(UUID reviewId) {
-
+    public ReviewDto get(UUID reviewId, UUID userId) {
         // 삭제되지 않은 리뷰 조회
         Review review = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
                 .orElseThrow(() ->
                         new EntityNotFoundException("리뷰를 찾을 수 없습니다.")
                 );
 
-        // 조회 결과 DTO 변환
-        return ReviewMapper.toDto(review);
+        // 요청자가 해당 리뷰에 좋아요를 눌렀는지 확인
+        boolean likedByMe = reviewLikeRepository
+                .findByReview_IdAndUser_Id(reviewId, userId)
+                .isPresent();
+
+        // 실제 좋아요 여부를 포함하여 DTO 반환
+        return ReviewMapper.toDto(review, likedByMe);
     }
 
     // 도서별 리뷰 조회

@@ -1,5 +1,5 @@
-package com.example.sb15deokhugamteam1.entity;
 
+package com.example.sb15deokhugamteam1.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
         name = "review_likes",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_review_likes_review_user",
+                        name = "uq_review_likes_review_user",
                         columnNames = {"review_id", "user_id"}
                 )
         }
@@ -38,5 +38,4 @@ public class ReviewLike extends BaseEntity {
         this.review = review;
         this.user = user;
     }
-
 }
