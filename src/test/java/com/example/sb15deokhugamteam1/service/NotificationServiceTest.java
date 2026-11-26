@@ -7,6 +7,7 @@ import com.example.sb15deokhugamteam1.entity.User;
 import com.example.sb15deokhugamteam1.event.CommentCreatedEvent;
 import com.example.sb15deokhugamteam1.event.PopularReviewRankedEvent;
 import com.example.sb15deokhugamteam1.event.ReviewLikedEvent;
+import com.example.sb15deokhugamteam1.repository.NotificationRepository;
 import com.example.sb15deokhugamteam1.repository.ReviewRepository;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
