@@ -1,5 +1,6 @@
 package com.example.sb15deokhugamteam1.controller;
 
+import com.example.sb15deokhugamteam1.dto.request.UserLoginRequest;
 import com.example.sb15deokhugamteam1.dto.request.UserRegisterRequest;
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.service.UserService;
@@ -21,8 +22,11 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserDto> create(@Valid @RequestBody UserRegisterRequest registerRequest) {
-
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(registerRequest));
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<UserDto> login(@Valid @RequestBody UserLoginRequest loginRequest) {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.login(loginRequest));
+    }
 }

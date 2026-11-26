@@ -2,6 +2,7 @@ package com.example.sb15deokhugamteam1.controller;
 
 import com.example.sb15deokhugamteam1.dto.response.UserDto;
 import com.example.sb15deokhugamteam1.exception.user.DuplicateUserEmailException;
+import com.example.sb15deokhugamteam1.exception.user.LoginFailedException;
 import com.example.sb15deokhugamteam1.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,4 +77,46 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.code").value("USER_01"))
                 .andExpect(jsonPath("$.message").value("이미 존재하는 이메일입니다."));
     }
+
+
+    /** login 테스트 **/
+
+    @Test
+    void 로그인_성공하면_200() throws Exception {
+        given(userService.login(any())).willReturn(userDto);
+
+        mockMvc.perform(post("/api/users/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"email":"test@test.com", "password":"test1234!"}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("test@test.com"));
+    }
+
+    @Test
+    void 로그인_실패하면_401() throws Exception {
+        given(userService.login(any())).willThrow(new LoginFailedException());
+
+        mockMvc.perform(post("/api/users/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"email":"test@test.com","password":"test1234!"}
+                        """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("LOGIN_01"))
+                .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않습니다."));
+    }
+
+    @Test
+    void 로그인_이메일_형식이_틀리면_400() throws Exception {
+        mockMvc.perform(post("/api/users/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {"email":"test", "password":"test1234!"}
+                        """))
+                .andExpect(status().isBadRequest());
+    }
+
+
 }
