@@ -148,7 +148,7 @@ public class UserServiceTest {
         User user = new User("test@test.com", "seok0630", "hashed");
         given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.of(user));
 
-        UserDto userDto = userService.update(userId, user.getId(), new UserUpdateRequest("newnick"));
+        UserDto userDto = userService.update(userId, userId, new UserUpdateRequest("newnick"));
 
         assertThat(userDto.nickname()).isEqualTo("newnick");
     }
