@@ -42,8 +42,8 @@ public class NotificationService {
 
     @Transactional
     public void notifyComment(CommentCreatedEvent event) {
-        String message = COMMENT_MESSAGE.formatted(event.commenterNickname()());
-        save(event.reviewAuthorId(), event.reviewId, message);
+        String message = COMMENT_MESSAGE.formatted(event.commenterNickname());
+        save(event.reviewAuthorId(), event.reviewId(), message);
     }
 
     @Transactional
