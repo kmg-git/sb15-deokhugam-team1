@@ -32,6 +32,7 @@ public class PowerUserController {
         period,
         null,
         cursorRank,
+        direction,
         limit
     );
     return ResponseEntity.ok(response);

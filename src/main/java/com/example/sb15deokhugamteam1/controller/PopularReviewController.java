@@ -32,6 +32,7 @@ public class PopularReviewController {
         period,
         null,
         cursorRank,
+        direction,
         limit
     );
     return ResponseEntity.ok(response);
