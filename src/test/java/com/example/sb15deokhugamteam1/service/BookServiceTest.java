@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,6 +48,9 @@ class BookServiceTest {
 
     @Mock
     BookRepository bookRepository;
+
+    @Mock
+    BookThumbnailService bookThumbnailService;
 
     @InjectMocks
     BookService bookService;
@@ -92,7 +96,7 @@ class BookServiceTest {
             given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(false);
             given(bookRepository.saveAndFlush(any(Book.class))).willAnswer(inv -> inv.getArgument(0));
 
-            BookDto result = bookService.create(createRequest("978-89-6626-095-9"));
+            BookDto result = bookService.create(createRequest("978-89-6626-095-9"), null);
 
             assertThat(result.isbn()).isEqualTo("9788966260959");
             assertThat(result.title()).isEqualTo("클린 코드");
@@ -103,7 +107,7 @@ class BookServiceTest {
         void ISBN이_비어_있으면_null로_저장하고_중복_검사를_하지_않는다() {
             given(bookRepository.saveAndFlush(any(Book.class))).willAnswer(inv -> inv.getArgument(0));
 
-            BookDto result = bookService.create(createRequest("  "));
+            BookDto result = bookService.create(createRequest("  "), null);
 
             assertThat(result.isbn()).isNull();
             verify(bookRepository, never()).existsByIsbnAndDeletedAtIsNull(any());
@@ -111,7 +115,7 @@ class BookServiceTest {
 
         @Test
         void ISBN_형식이_틀리면_InvalidIsbnException() {
-            assertThatThrownBy(() -> bookService.create(createRequest("12345")))
+            assertThatThrownBy(() -> bookService.create(createRequest("12345"), null))
                     .isInstanceOf(InvalidIsbnException.class);
             verify(bookRepository, never()).saveAndFlush(any());
         }
@@ -120,7 +124,7 @@ class BookServiceTest {
         void 이미_등록된_ISBN이면_DuplicateIsbnException() {
             given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(true);
 
-            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
+            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959"), null))
                     .isInstanceOf(DuplicateIsbnException.class);
             verify(bookRepository, never()).saveAndFlush(any());
         }
@@ -131,7 +135,7 @@ class BookServiceTest {
             given(bookRepository.saveAndFlush(any(Book.class)))
                     .willThrow(violation("uq_books_active_isbn"));
 
-            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
+            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959"), null))
                     .isInstanceOf(DuplicateIsbnException.class);
         }
 
@@ -141,7 +145,7 @@ class BookServiceTest {
             given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(false);
             given(bookRepository.saveAndFlush(any(Book.class))).willThrow(original);
 
-            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959")))
+            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959"), null))
                     .isSameAs(original);
         }
 
@@ -150,8 +154,84 @@ class BookServiceTest {
             DataIntegrityViolationException original = new DataIntegrityViolationException("other constraint");
             given(bookRepository.saveAndFlush(any(Book.class))).willThrow(original);
 
-            assertThatThrownBy(() -> bookService.create(createRequest(null)))
+            assertThatThrownBy(() -> bookService.create(createRequest(null), null))
                     .isSameAs(original);
+        }
+    }
+
+    @Nested
+    class Thumbnail {
+
+        private final MockMultipartFile image =
+                new MockMultipartFile("thumbnailImage", "cover.png", "image/png", new byte[]{1});
+
+        @Test
+        void 등록할_때_표지를_올리고_주소를_저장한다() {
+            given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(false);
+            given(bookThumbnailService.store(image)).willReturn("https://bucket/books/a.png");
+            given(bookRepository.saveAndFlush(any(Book.class))).willAnswer(inv -> inv.getArgument(0));
+
+            BookDto result = bookService.create(createRequest("9788966260959"), image);
+
+            assertThat(result.thumbnailUrl()).isEqualTo("https://bucket/books/a.png");
+        }
+
+        @Test
+        void ISBN이_중복이면_표지를_올리지_않는다() {
+            given(bookRepository.existsByIsbnAndDeletedAtIsNull("9788966260959")).willReturn(true);
+
+            assertThatThrownBy(() -> bookService.create(createRequest("9788966260959"), image))
+                    .isInstanceOf(DuplicateIsbnException.class);
+            verify(bookThumbnailService, never()).store(any());
+        }
+
+        @Test
+        void 수정할_때_새_표지가_오면_바꾸고_예전_표지는_커밋_후_지운다() {
+            UUID id = UUID.randomUUID();
+            Book book = new Book("클린 코드", "로버트 C. 마틴", "설명", "인사이트", PUBLISHED,
+                    "9788966260959", "https://bucket/books/old.png");
+            given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book));
+            given(bookThumbnailService.store(image)).willReturn("https://bucket/books/new.png");
+
+            BookDto result = bookService.update(id, new BookUpdateRequest(null, null, null, null, null), image);
+
+            assertThat(result.thumbnailUrl()).isEqualTo("https://bucket/books/new.png");
+            verify(bookThumbnailService).deleteAfterCommit("https://bucket/books/old.png");
+        }
+
+        @Test
+        void 수정할_때_표지가_없으면_예전_표지를_그대로_둔다() {
+            UUID id = UUID.randomUUID();
+            Book book = new Book("클린 코드", "로버트 C. 마틴", "설명", "인사이트", PUBLISHED,
+                    "9788966260959", "https://bucket/books/old.png");
+            given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book));
+
+            BookDto result = bookService.update(id, new BookUpdateRequest("새 제목", null, null, null, null), null);
+
+            assertThat(result.thumbnailUrl()).isEqualTo("https://bucket/books/old.png");
+            verify(bookThumbnailService, never()).deleteAfterCommit(any());
+        }
+
+        @Test
+        void 물리_삭제하면_표지도_지운다() {
+            UUID id = UUID.randomUUID();
+            Book book = new Book("클린 코드", "로버트 C. 마틴", "설명", "인사이트", PUBLISHED,
+                    "9788966260959", "https://bucket/books/old.png");
+            given(bookRepository.findById(id)).willReturn(Optional.of(book));
+
+            bookService.hardDelete(id);
+
+            verify(bookThumbnailService).deleteAfterCommit("https://bucket/books/old.png");
+        }
+
+        @Test
+        void 논리_삭제는_표지를_남겨_둔다() {
+            UUID id = UUID.randomUUID();
+            given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book()));
+
+            bookService.softDelete(id);
+
+            verify(bookThumbnailService, never()).deleteAfterCommit(any());
         }
     }
 
@@ -184,7 +264,7 @@ class BookServiceTest {
             given(bookRepository.findByIdAndDeletedAtIsNull(id)).willReturn(Optional.of(book));
 
             BookDto result = bookService.update(id,
-                    new BookUpdateRequest("클린 코드 2판", "로버트 C. 마틴", "새 설명", "인사이트", PUBLISHED));
+                    new BookUpdateRequest("클린 코드 2판", "로버트 C. 마틴", "새 설명", "인사이트", PUBLISHED), null);
 
             assertThat(result.title()).isEqualTo("클린 코드 2판");
             assertThat(book.getDescription()).isEqualTo("새 설명");
