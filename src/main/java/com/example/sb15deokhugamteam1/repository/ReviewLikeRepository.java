@@ -3,6 +3,9 @@ package com.example.sb15deokhugamteam1.repository;
 
 import com.example.sb15deokhugamteam1.entity.ReviewLike;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -28,4 +31,9 @@ public interface ReviewLikeRepository extends JpaRepository<ReviewLike, UUID> {
             UUID userId,
             Collection<UUID> reviewIds
     );
+
+    // 특정 리뷰에 연결된 좋아요 전체 삭제
+    @Modifying
+    @Query("DELETE FROM ReviewLike rl WHERE rl.review.id = :reviewId")
+    void deleteAllByReviewId(@Param("reviewId") UUID reviewId);
 }

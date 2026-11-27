@@ -17,6 +17,8 @@ import com.example.sb15deokhugamteam1.entity.Book;
 import com.example.sb15deokhugamteam1.entity.Review;
 import com.example.sb15deokhugamteam1.entity.ReviewLike;
 import com.example.sb15deokhugamteam1.entity.User;
+import com.example.sb15deokhugamteam1.exception.review.ReviewForbiddenException;
+import com.example.sb15deokhugamteam1.exception.review.ReviewNotFoundException;
 import com.example.sb15deokhugamteam1.mapper.dto.ReviewMapper;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
 import com.example.sb15deokhugamteam1.repository.ReviewLikeRepository;
@@ -57,18 +59,27 @@ public class ReviewService {
     @Transactional
     public ReviewDto create(UUID userId, ReviewCreateRequest request) {
 
-        // 삭제되지 않은 도서 조회
-        Book book = bookRepository.findByIdAndDeletedAtIsNull(request.getBookId())
-                .orElseThrow(() ->
-                        new EntityNotFoundException("도서를 찾을 수 없습니다.")
-                );
-
         // 삭제되지 않은 사용자 조회
         User user = userRepository.findById(userId)
                 .filter(foundUser -> foundUser.getDeletedAt() == null)
                 .orElseThrow(() ->
                         new EntityNotFoundException("사용자를 찾을 수 없습니다.")
                 );
+
+        // 삭제되지 않은 도서 조회
+        Book book = bookRepository.findByIdAndDeletedAtIsNull(request.getBookId())
+                .orElseThrow(() ->
+                        new EntityNotFoundException("도서를 찾을 수 없습니다.")
+                );
+
+        // 동일 사용자의 동일 도서 리뷰 중복 확인
+        // 논리 삭제된 리뷰도 중복으로 취급
+        if (reviewRepository.existsByBook_IdAndUser_Id(
+                book.getId(), user.getId())) {
+            throw new IllegalStateException(
+                    "이미 해당 도서에 작성한 리뷰가 있습니다."
+            );
+        }
 
         // 리뷰 엔티티 생성
         Review review = new Review(
@@ -109,23 +120,24 @@ public class ReviewService {
 
         // 삭제되지 않은 리뷰 조회
         Review review = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("리뷰를 찾을 수 없습니다.")
-                );
+                .orElseThrow(() -> new ReviewNotFoundException(reviewId));
+
+        // 수정할 내용 확인
+        if (request.getContent() == null && request.getRating() == null) {
+            throw new IllegalArgumentException(
+                    "수정할 내용이나 별점을 하나 이상 입력해야 합니다."
+            );
+        }
 
         // 작성자 계정 및 권한 확인
         User user = review.getUser();
 
         if (user.getDeletedAt() != null) {
-            throw new IllegalStateException(
-                    "삭제된 사용자는 리뷰를 수정할 수 없습니다."
-            );
+            throw new ReviewForbiddenException(reviewId);
         }
 
         if (!user.getId().equals(userId)) {
-            throw new IllegalStateException(
-                    "리뷰를 수정할 권한이 없습니다."
-            );
+            throw new ReviewForbiddenException(reviewId);
         }
 
         // 기존 별점 저장
@@ -136,7 +148,6 @@ public class ReviewService {
                 request.getContent(),
                 request.getRating()
         );
-
 
         // 별점이 변경되었을 때만 도서 통계 갱신
         if (request.getRating() != null
@@ -156,6 +167,7 @@ public class ReviewService {
             }
         }
 
+        // 요청자의 좋아요 여부 확인
         boolean likedByMe = reviewLikeRepository
                 .findByReview_IdAndUser_Id(reviewId, userId)
                 .isPresent();
@@ -163,34 +175,33 @@ public class ReviewService {
         return ReviewMapper.toDto(review, likedByMe);
     }
 
-    // 리뷰 삭제
+    // 리뷰 논리 삭제
     @Transactional
     public void delete(UUID reviewId, UUID userId) {
 
         // 삭제되지 않은 리뷰 조회
         Review review = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("리뷰를 찾을 수 없습니다.")
-                );
+                .orElseThrow(() -> new ReviewNotFoundException(reviewId));
 
         User user = review.getUser();
 
+        // 삭제된 사용자 확인
         if (user.getDeletedAt() != null) {
-            throw new IllegalStateException(
-                    "삭제된 사용자 리뷰는 삭제할 수 없습니다."
-            );
+            throw new ReviewForbiddenException(reviewId);
         }
 
+        // 작성자 권한 확인
         if (!user.getId().equals(userId)) {
-            throw new IllegalStateException("삭제할 권한이 없습니다.");
+            throw new ReviewForbiddenException(reviewId);
         }
 
         int oldRating = review.getRating();
         UUID bookId = review.getBook().getId();
 
-        // 리뷰 소프트 삭제
+        // 리뷰 논리 삭제
         review.softDelete();
 
+        // 도서 리뷰 통계 갱신
         int updatedCount = bookRepository.decreaseReview(
                 bookId,
                 oldRating
@@ -203,21 +214,53 @@ public class ReviewService {
         }
     }
 
+    // 리뷰 물리 삭제
+    @Transactional
+    public void hardDelete(UUID reviewId, UUID userId) {
+
+        // 논리 삭제 여부와 관계없이 리뷰 조회
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ReviewNotFoundException(reviewId));
+
+        // 작성자 권한 확인
+        if (!review.getUser().getId().equals(userId)) {
+            throw new ReviewForbiddenException(reviewId);
+        }
+
+        // 논리 삭제되지 않은 리뷰만 도서 통계 감소
+        if (!review.isDeleted()) {
+
+            int updatedCount = bookRepository.decreaseReview(
+                    review.getBook().getId(),
+                    review.getRating()
+            );
+
+            if (updatedCount != 1) {
+                throw new IllegalStateException(
+                        "도서 리뷰 통계 갱신에 실패했습니다."
+                );
+            }
+        }
+
+        // 리뷰에 연결된 좋아요 먼저 삭제
+        reviewLikeRepository.deleteAllByReviewId(reviewId);
+
+        // 리뷰 물리 삭제
+        reviewRepository.delete(review);
+    }
+
     // 리뷰 단건 조회
     @Transactional(readOnly = true)
     public ReviewDto get(UUID reviewId, UUID userId) {
-        // 삭제되지 않은 리뷰 조회
+
         Review review = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("리뷰를 찾을 수 없습니다.")
-                );
+                .orElseThrow(() -> new ReviewNotFoundException(reviewId));
 
         // 요청자가 해당 리뷰에 좋아요를 눌렀는지 확인
         boolean likedByMe = reviewLikeRepository
                 .findByReview_IdAndUser_Id(reviewId, userId)
                 .isPresent();
 
-        // 실제 좋아요 여부를 포함하여 DTO 반환
         return ReviewMapper.toDto(review, likedByMe);
     }
 
@@ -236,8 +279,7 @@ public class ReviewService {
         return reviews.map(ReviewMapper::toDto);
     }
 
-    // 기존 메서드 유지
-    // 기존 호출 코드와 테스트의 메서드 호출 호환성을 위한 메서드
+    // 리뷰 검색 (요청자 정보 없이 조회)
     @Transactional(readOnly = true)
     public ReviewPageResponse search(ReviewSearchRequest request) {
         return search(request, null);
@@ -249,8 +291,6 @@ public class ReviewService {
             ReviewSearchRequest request,
             UUID requestUserId
     ) {
-
-        // 1. 조회 개수 설정 (기본값 50)
         int limit = request.getLimit() == null ? 50 : request.getLimit();
 
         if (limit <= 0) {
@@ -259,82 +299,83 @@ public class ReviewService {
             );
         }
 
-        // 2. 검색 조건에 맞는 리뷰 조회
+        String orderBy = request.getOrderBy();
+
+        if (orderBy == null || orderBy.isBlank()) {
+            orderBy = "createdAt";
+        }
+
+        if (!orderBy.equals("createdAt") && !orderBy.equals("rating")) {
+            throw new IllegalArgumentException(
+                    "지원하지 않는 정렬 기준입니다."
+            );
+        }
+
+        String direction = request.getDirection();
+
+        if (direction == null || direction.isBlank()) {
+            direction = "DESC";
+        }
+
+        direction = direction.toUpperCase(java.util.Locale.ROOT);
+
+        if (!direction.equals("ASC") && !direction.equals("DESC")) {
+            throw new IllegalArgumentException(
+                    "지원하지 않는 정렬 방향입니다."
+            );
+        }
+
         List<Review> reviews = reviewQueryRepository.searchReviews(
                 request.getUserId(),
                 request.getBookId(),
                 request.getKeyword(),
-                request.getOrderBy(),
-                request.getDirection(),
+                orderBy,
+                direction,
                 request.getCursor(),
                 request.getAfter(),
                 limit
         );
 
-        // 3. 다음 페이지 존재 여부 확인
         boolean hasNext = reviews.size() > limit;
 
-        // 4. limit보다 하나 더 조회한 마지막 데이터 제거
         if (hasNext) {
             reviews.remove(reviews.size() - 1);
         }
 
-        // 5. 다음 페이지 커서 생성
         String nextCursor = null;
         Instant nextAfter = null;
 
         if (hasNext && !reviews.isEmpty()) {
-
             Review lastReview = reviews.get(reviews.size() - 1);
 
-            String orderBy = request.getOrderBy() == null
-                    ? "createdAt"
-                    : request.getOrderBy();
-
-            if ("rating".equals(orderBy)) {
-
+            if (orderBy.equals("rating")) {
                 nextCursor = lastReview.getRating()
                         + "|" + lastReview.getCreatedAt()
                         + "|" + lastReview.getId();
-
-            } else if ("createdAt".equals(orderBy)) {
-
+            } else {
                 nextCursor = lastReview.getCreatedAt()
                         + "|" + lastReview.getId();
-
-            } else {
-                throw new IllegalArgumentException(
-                        "지원하지 않는 정렬 기준입니다."
-                );
             }
 
             nextAfter = lastReview.getCreatedAt();
         }
 
-        // 6. 현재 페이지 리뷰 ID 수집
         Set<UUID> reviewIds = reviews.stream()
                 .map(Review::getId)
                 .collect(Collectors.toSet());
 
-        // 7. 요청자가 좋아요를 누른 리뷰 ID 일괄 조회
         Set<UUID> likedReviewIds;
 
         if (requestUserId != null && !reviewIds.isEmpty()) {
-
             likedReviewIds = reviewLikeRepository
-                    .findAllByUser_IdAndReview_IdIn(
-                            requestUserId,
-                            reviewIds
-                    )
+                    .findAllByUser_IdAndReview_IdIn(requestUserId, reviewIds)
                     .stream()
                     .map(reviewLike -> reviewLike.getReview().getId())
                     .collect(Collectors.toSet());
-
         } else {
             likedReviewIds = Set.of();
         }
 
-        // 8. 좋아요 여부를 포함하여 DTO 변환
         List<ReviewDto> content = reviews.stream()
                 .map(review -> ReviewMapper.toDto(
                         review,
@@ -342,22 +383,17 @@ public class ReviewService {
                 ))
                 .toList();
 
-        // 9. 현재 페이지의 실제 리뷰 개수
-        int size = content.size();
-
-        // 10. 전체 검색 결과 개수 조회
         long totalElements = reviewQueryRepository.countReviews(
                 request.getUserId(),
                 request.getBookId(),
                 request.getKeyword()
         );
 
-        // 11. 페이지 응답 반환
         return new ReviewPageResponse(
                 content,
                 nextCursor,
                 nextAfter,
-                size,
+                content.size(),
                 totalElements,
                 hasNext
         );
@@ -370,9 +406,7 @@ public class ReviewService {
         // 삭제되지 않은 리뷰 조회 및 잠금
         Review review = reviewRepository
                 .findByIdAndDeletedAtIsNullForUpdate(reviewId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("리뷰를 찾을 수 없습니다.")
-                );
+                .orElseThrow(() -> new ReviewNotFoundException(reviewId));
 
         // 삭제되지 않은 사용자 조회
         User user = userRepository.findById(userId)

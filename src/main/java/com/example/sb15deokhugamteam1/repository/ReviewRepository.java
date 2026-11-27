@@ -24,6 +24,10 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
             Pageable pageable
     );
 
+    // 동일 사용자의 동일 도서 리뷰 중복 확인
+    // 논리 삭제된 리뷰도 중복으로 취급
+    boolean existsByBook_IdAndUser_Id(UUID bookId, UUID userId);
+
     // 좋아요 처리를 위한 리뷰 비관적 쓰기 잠금 조회
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Review r WHERE r.id = :reviewId AND r.deletedAt IS NULL")
