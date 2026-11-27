@@ -15,11 +15,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import org.springframework.http.MediaType;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
+import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -205,5 +205,70 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.code").value("USER_02"));
     }
 
+    /** 논리 삭제 테스트 **/
+
+    @Test
+    void 논리_삭제_성공하면_204() throws Exception {
+        UUID userId = userDto.id();
+
+        mockMvc.perform(delete("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", userId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void 남의_계정을_논리_삭제하면_403() throws Exception {
+        UUID userId = userDto.id();
+        willThrow(new UserForbiddenException(userId)).given(userService).softDelete(any(), any());
+
+        mockMvc.perform(delete("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", UUID.randomUUID()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_03"));
+    }
+
+    @Test
+    void 없는_유저를_논리_삭제하면_404() throws Exception {
+        UUID userId = UUID.randomUUID();
+        willThrow(new UserNotFoundException(userId)).given(userService).softDelete(any(), any());
+
+        mockMvc.perform(delete("/api/users/{userId}", userId)
+                        .header("Deokhugam-Request-User-ID", userId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_02"));
+    }
+
+    /** 물리 삭제 테스트 **/
+
+    @Test
+    void 물리_삭제_성공하면_204() throws Exception {
+        UUID userId = userDto.id();
+
+        mockMvc.perform(delete("/api/users/{userId}/hard", userId)
+                        .header("Deokhugam-Request-User-ID", userId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void 남의_계정을_물리_삭제하면_403() throws Exception {
+        UUID userId = userDto.id();
+        willThrow(new UserForbiddenException(userId)).given(userService).hardDelete(any(), any());
+
+        mockMvc.perform(delete("/api/users/{userId}/hard", userId)
+                        .header("Deokhugam-Request-User-ID", UUID.randomUUID()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_03"));
+    }
+
+    @Test
+    void 없는_유저를_물리_삭제하면_404() throws Exception {
+        UUID userId = UUID.randomUUID();
+        willThrow(new UserNotFoundException(userId)).given(userService).hardDelete(any(), any());
+
+        mockMvc.perform(delete("/api/users/{userId}/hard", userId)
+                        .header("Deokhugam-Request-User-ID", userId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_02"));
+    }
 
 }
