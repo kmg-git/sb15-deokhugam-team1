@@ -41,13 +41,12 @@ public class BookController {
     private final BookInfoService bookInfoService;
     private final IsbnOcrService isbnOcrService;
 
-    // TODO thumbnailImage 는 S3 연동 후 처리 (지금은 받기만 하고 저장하지 않음)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BookDto> create(
             @RequestPart("bookData") @Valid BookCreateRequest request,
             @RequestPart(value = "thumbnailImage", required = false) MultipartFile thumbnailImage
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(bookService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(bookService.create(request, thumbnailImage));
     }
 
     @GetMapping
@@ -89,7 +88,7 @@ public class BookController {
             @RequestPart("bookData") @Valid BookUpdateRequest request,
             @RequestPart(value = "thumbnailImage", required = false) MultipartFile thumbnailImage
     ) {
-        return ResponseEntity.ok(bookService.update(bookId, request));
+        return ResponseEntity.ok(bookService.update(bookId, request, thumbnailImage));
     }
 
     @DeleteMapping("/{bookId}")

@@ -1,11 +1,12 @@
 package com.example.sb15deokhugamteam1.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record CommentCreateRequest(
     @NotNull UUID reviewId,
     @NotNull UUID userId,
-    @NotNull String content
+    @NotBlank String content
 ) {
 }

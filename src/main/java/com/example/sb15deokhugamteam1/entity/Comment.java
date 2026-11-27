@@ -33,7 +33,18 @@ public class Comment extends BaseUpdatableEntity{
         this.content = content;
     }
 
+    public boolean isDeleted(){
+        return deletedAt==null ? false : true;
+    }
+
     public void updateContent(String content) {
         this.content = content;
     }
+
+    public void softDelete() {
+        this.deletedAt = Instant.now();
+    }
+
+
+
 }
