@@ -34,15 +34,16 @@ public class NotificationQueryRepositoryImpl implements NotificationQueryReposit
 
         if (hasCursor) {
             jpql.append(" and (n.createdAt ").append(operator).append(" :after").append(" or (n.createdAt = :after and n.id ")
-                    .append(operator).append(":cursorId))");}
-            jpql.append(" order by n.createdAt ").append(order).append(", n.id ").append(order);
+                    .append(operator).append(":cursorId))");
+        }
+        jpql.append(" order by n.createdAt ").append(order).append(", n.id ").append(order);
 
-            TypedQuery<NotificationDto> query = entityManager.createQuery(jpql.toString(), NotificationDto.class)
-                    .setParameter("userId", userId).setMaxResults(limit + 1);
-            if(hasCursor) {
-                query.setParameter("after", after);
-                query.setParameter("cursorId", cursorId);
-            }
-            return query.getResultList();
+        TypedQuery<NotificationDto> query = entityManager.createQuery(jpql.toString(), NotificationDto.class)
+                .setParameter("userId", userId).setMaxResults(limit + 1);
+        if(hasCursor) {
+            query.setParameter("after", after);
+            query.setParameter("cursorId", cursorId);
+        }
+        return query.getResultList();
     }
 }
