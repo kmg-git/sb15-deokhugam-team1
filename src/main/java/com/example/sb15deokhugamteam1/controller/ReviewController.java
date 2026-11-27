@@ -78,6 +78,16 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
+    // 리뷰 물리 삭제
+    @DeleteMapping("/{reviewId}/hard")
+    public ResponseEntity<Void> hardDelete(
+            @PathVariable UUID reviewId,
+            @RequestHeader("Deokhugam-Request-User-ID") UUID userId
+    ) {
+        reviewService.hardDelete(reviewId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     // 특정 도서의 리뷰 목록 조회
     @GetMapping("/books/{bookId}")
     public ResponseEntity<Page<ReviewDto>> getAllByBook(

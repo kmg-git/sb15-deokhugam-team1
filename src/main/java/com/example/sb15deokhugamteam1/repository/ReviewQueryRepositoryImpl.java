@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -26,35 +27,33 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             Instant after,
             int limit
     ) {
-        // 1. 기본 JPQL 생성
         StringBuilder jpql = new StringBuilder("""
                 SELECT r
                 FROM Review r
                 WHERE r.deletedAt IS NULL
                 """);
 
-        // 2. 작성자 ID 검색 조건
         if (userId != null) {
-            jpql.append(" AND r.user.id = :userId");
+            jpql.append(" AND r.user.id = :userId ");
         }
 
-        // 3. 도서 ID 검색 조건
         if (bookId != null) {
-            jpql.append(" AND r.book.id = :bookId");
+            jpql.append(" AND r.book.id = :bookId ");
         }
 
-        // 4. 닉네임 또는 리뷰 내용 검색 조건
         if (keyword != null && !keyword.isBlank()) {
             jpql.append("""
-                    AND (
-                        LOWER(r.user.nickname) LIKE LOWER(:keyword)
-                        OR LOWER(r.content) LIKE LOWER(:keyword)
-                    )
+                     AND (
+                         LOWER(r.user.nickname) LIKE LOWER(:keyword)
+                         OR LOWER(r.content) LIKE LOWER(:keyword)
+                         OR LOWER(r.book.title) LIKE LOWER(:keyword)
+                     )
                     """);
         }
 
-        // 5. 정렬 기준 설정
-        String actualOrderBy = orderBy == null ? "createdAt" : orderBy;
+        String actualOrderBy = orderBy == null || orderBy.isBlank()
+                ? "createdAt"
+                : orderBy;
 
         String sortField = switch (actualOrderBy) {
             case "createdAt" -> "r.createdAt";
@@ -64,10 +63,11 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             );
         };
 
-        // 6. 정렬 방향 설정
-        String sortDirection = switch (
-                direction == null ? "DESC" : direction
-                ) {
+        String actualDirection = direction == null || direction.isBlank()
+                ? "DESC"
+                : direction.toUpperCase(java.util.Locale.ROOT);
+
+        String sortDirection = switch (actualDirection) {
             case "ASC" -> "ASC";
             case "DESC" -> "DESC";
             default -> throw new IllegalArgumentException(
@@ -77,10 +77,13 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
 
         boolean isAsc = "ASC".equals(sortDirection);
 
-        // 7. 커서 값 보관
         Integer cursorRating = null;
         Instant cursorCreatedAt = null;
         UUID cursorId = null;
+
+        if ((cursor == null || cursor.isBlank()) && after != null) {
+            throw new IllegalArgumentException("보조 커서는 페이지 커서와 함께 전달해야 합니다.");
+        }
 
         if (cursor != null && !cursor.isBlank()) {
             String[] cursorParts = cursor.split("\\|");
@@ -103,13 +106,20 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
                     cursorCreatedAt = Instant.parse(cursorParts[0]);
                     cursorId = UUID.fromString(cursorParts[1]);
                 }
+
             } catch (RuntimeException e) {
                 throw new IllegalArgumentException(
                         "잘못된 페이지 커서입니다."
                 );
             }
 
-            // 8. 다음 페이지 조회 조건
+            // 커서 파싱 성공 후 보조 커서 검증
+            if (after != null && !after.equals(cursorCreatedAt)) {
+                throw new IllegalArgumentException(
+                        "커서와 보조 커서가 일치하지 않습니다."
+                );
+            }
+
             if ("rating".equals(actualOrderBy)) {
                 if (isAsc) {
                     jpql.append("""
@@ -142,7 +152,6 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
                             )
                             """);
                 }
-
             } else {
                 if (isAsc) {
                     jpql.append("""
@@ -168,7 +177,7 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             }
         }
 
-        // 9. 정렬 조건 추가
+
         jpql.append(" ORDER BY ")
                 .append(sortField)
                 .append(" ")
@@ -182,13 +191,11 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
         jpql.append(", r.id ")
                 .append(sortDirection);
 
-        // 10. JPQL을 쿼리 객체로 변환
         var query = entityManager.createQuery(
                 jpql.toString(),
                 Review.class
         );
 
-        // 11. 검색 파라미터 전달
         if (userId != null) {
             query.setParameter("userId", userId);
         }
@@ -204,7 +211,6 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             );
         }
 
-        // 12. 커서 파라미터 전달
         if (cursorId != null) {
             query.setParameter("cursorId", cursorId);
             query.setParameter("cursorCreatedAt", cursorCreatedAt);
@@ -214,7 +220,6 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             }
         }
 
-        // 13. 조회 결과 반환
         return query
                 .setMaxResults(limit + 1)
                 .getResultList();
@@ -226,40 +231,35 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             UUID bookId,
             String keyword
     ) {
-        // 1. 전체 리뷰 개수를 세는 JPQL 생성
         StringBuilder jpql = new StringBuilder("""
                 SELECT COUNT(r)
                 FROM Review r
                 WHERE r.deletedAt IS NULL
                 """);
 
-        // 2. 작성자 ID 검색 조건
         if (userId != null) {
-            jpql.append(" AND r.user.id = :userId");
+            jpql.append(" AND r.user.id = :userId ");
         }
 
-        // 3. 도서 ID 검색 조건
         if (bookId != null) {
-            jpql.append(" AND r.book.id = :bookId");
+            jpql.append(" AND r.book.id = :bookId ");
         }
 
-        // 4. 닉네임 또는 리뷰 내용 검색 조건
         if (keyword != null && !keyword.isBlank()) {
             jpql.append("""
-                    AND (
-                        LOWER(r.user.nickname) LIKE LOWER(:keyword)
-                        OR LOWER(r.content) LIKE LOWER(:keyword)
-                    )
+                     AND (
+                         LOWER(r.user.nickname) LIKE LOWER(:keyword)
+                         OR LOWER(r.content) LIKE LOWER(:keyword)
+                         OR LOWER(r.book.title) LIKE LOWER(:keyword)
+                     )
                     """);
         }
 
-        // 5. JPQL을 쿼리 객체로 변환
         var query = entityManager.createQuery(
                 jpql.toString(),
                 Long.class
         );
 
-        // 6. 검색 파라미터 전달
         if (userId != null) {
             query.setParameter("userId", userId);
         }
@@ -275,7 +275,6 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
             );
         }
 
-        // 7. 검색 조건에 해당하는 리뷰 개수 반환
         return query.getSingleResult();
     }
 }

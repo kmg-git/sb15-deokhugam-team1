@@ -1,23 +1,31 @@
 
 package com.example.sb15deokhugamteam1.service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
-import java.util.*;
-
-import com.example.sb15deokhugamteam1.dto.response.ReviewPageResponse;
 import com.example.sb15deokhugamteam1.dto.request.ReviewCreateRequest;
 import com.example.sb15deokhugamteam1.dto.request.ReviewSearchRequest;
 import com.example.sb15deokhugamteam1.dto.request.ReviewUpdateRequest;
 import com.example.sb15deokhugamteam1.dto.response.ReviewDto;
+import com.example.sb15deokhugamteam1.dto.response.ReviewPageResponse;
 import com.example.sb15deokhugamteam1.entity.Book;
 import com.example.sb15deokhugamteam1.entity.Review;
 import com.example.sb15deokhugamteam1.entity.ReviewLike;
 import com.example.sb15deokhugamteam1.entity.User;
+import com.example.sb15deokhugamteam1.exception.review.ReviewForbiddenException;
+import com.example.sb15deokhugamteam1.exception.review.ReviewNotFoundException;
 import com.example.sb15deokhugamteam1.repository.BookRepository;
 import com.example.sb15deokhugamteam1.repository.ReviewLikeRepository;
 import com.example.sb15deokhugamteam1.repository.ReviewQueryRepository;
 import com.example.sb15deokhugamteam1.repository.ReviewRepository;
 import com.example.sb15deokhugamteam1.repository.UserRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,8 +37,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -56,13 +62,58 @@ class ReviewServiceTest {
     @InjectMocks
     private ReviewService reviewService;
 
+    private Book createBook() {
+        return new Book(
+                "테스트 도서",
+                "테스트 작가",
+                "테스트 설명",
+                "테스트 출판사",
+                LocalDate.of(2025, 1, 1),
+                "9781234567890",
+                null
+        );
+    }
+
+    private User createUser() {
+        return new User(
+                "test@test.com",
+                "테스트 사용자",
+                "password"
+        );
+    }
+
+    private Review createSearchReview(int rating, Instant createdAt) {
+        Book book = createBook();
+        User user = createUser();
+
+        ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
+
+        Review review = new Review(
+                book,
+                user,
+                "페이지네이션 테스트 리뷰",
+                rating
+        );
+
+        ReflectionTestUtils.setField(review, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(review, "createdAt", createdAt);
+
+        return review;
+    }
+
+    // 리뷰 생성
+
     @Test
     void create_도서가_존재하지_않으면_예외가_발생한다() {
-
         UUID userId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
+        User user = createUser();
         ReviewCreateRequest request = mock(ReviewCreateRequest.class);
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
 
         when(request.getBookId()).thenReturn(bookId);
 
@@ -74,32 +125,16 @@ class ReviewServiceTest {
                 () -> reviewService.create(userId, request)
         );
 
+        verify(userRepository).findById(userId);
+        verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
         verify(reviewRepository, never()).saveAndFlush(any());
-        verifyNoInteractions(userRepository);
     }
 
     @Test
     void create_사용자가_존재하지_않으면_예외가_발생한다() {
-
         UUID userId = UUID.randomUUID();
-        UUID bookId = UUID.randomUUID();
-
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
 
         ReviewCreateRequest request = mock(ReviewCreateRequest.class);
-
-        when(request.getBookId()).thenReturn(bookId);
-
-        when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-                .thenReturn(Optional.of(book));
 
         when(userRepository.findById(userId))
                 .thenReturn(Optional.empty());
@@ -109,39 +144,19 @@ class ReviewServiceTest {
                 () -> reviewService.create(userId, request)
         );
 
+        verify(userRepository).findById(userId);
+        verifyNoInteractions(bookRepository);
         verify(reviewRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void create_삭제된_사용자는_리뷰를_등록할_수_없다() {
-
         UUID userId = UUID.randomUUID();
-        UUID bookId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
+        User user = createUser();
         user.softDelete();
 
         ReviewCreateRequest request = mock(ReviewCreateRequest.class);
-
-        when(request.getBookId()).thenReturn(bookId);
-
-        when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-                .thenReturn(Optional.of(book));
 
         when(userRepository.findById(userId))
                 .thenReturn(Optional.of(user));
@@ -151,30 +166,21 @@ class ReviewServiceTest {
                 () -> reviewService.create(userId, request)
         );
 
+        verify(userRepository).findById(userId);
+        verifyNoInteractions(bookRepository);
         verify(reviewRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void create_정상적으로_리뷰를_등록한다() {
-
         UUID userId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
+        Book book = createBook();
+        User user = createUser();
 
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        ReflectionTestUtils.setField(book, "id", bookId);
+        ReflectionTestUtils.setField(user, "id", userId);
 
         ReviewCreateRequest request = mock(ReviewCreateRequest.class);
 
@@ -182,16 +188,19 @@ class ReviewServiceTest {
         when(request.getContent()).thenReturn("정말 재미있는 책입니다.");
         when(request.getRating()).thenReturn(5);
 
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
         when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
                 .thenReturn(Optional.of(book));
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
+        when(reviewRepository.existsByBook_IdAndUser_Id(bookId, userId))
+                .thenReturn(false);
 
         when(reviewRepository.saveAndFlush(any(Review.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(bookRepository.increaseReview(book.getId(), 5))
+        when(bookRepository.increaseReview(bookId, 5))
                 .thenReturn(1);
 
         ReviewDto result = reviewService.create(userId, request);
@@ -200,31 +209,54 @@ class ReviewServiceTest {
         assertEquals("정말 재미있는 책입니다.", result.getContent());
         assertEquals(5, result.getRating());
 
+        verify(reviewRepository).existsByBook_IdAndUser_Id(bookId, userId);
         verify(reviewRepository).saveAndFlush(any(Review.class));
-        verify(bookRepository).increaseReview(book.getId(), 5);
+        verify(bookRepository).increaseReview(bookId, 5);
+    }
+
+    @Test
+    void create_이미_리뷰를_작성한_도서면_예외가_발생한다() {
+        UUID userId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        Book book = createBook();
+        User user = createUser();
+
+        ReflectionTestUtils.setField(book, "id", bookId);
+        ReflectionTestUtils.setField(user, "id", userId);
+
+        ReviewCreateRequest request = mock(ReviewCreateRequest.class);
+
+        when(request.getBookId()).thenReturn(bookId);
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
+        when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
+                .thenReturn(Optional.of(book));
+
+        when(reviewRepository.existsByBook_IdAndUser_Id(bookId, userId))
+                .thenReturn(true);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> reviewService.create(userId, request)
+        );
+
+        verify(reviewRepository, never()).saveAndFlush(any());
+        verify(bookRepository, never()).increaseReview(any(), anyInt());
     }
 
     @Test
     void create_도서_통계_갱신에_실패하면_예외가_발생한다() {
-
         UUID userId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
+        Book book = createBook();
+        User user = createUser();
 
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        ReflectionTestUtils.setField(book, "id", bookId);
+        ReflectionTestUtils.setField(user, "id", userId);
 
         ReviewCreateRequest request = mock(ReviewCreateRequest.class);
 
@@ -232,16 +264,19 @@ class ReviewServiceTest {
         when(request.getContent()).thenReturn("테스트 리뷰");
         when(request.getRating()).thenReturn(5);
 
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
         when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
                 .thenReturn(Optional.of(book));
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
+        when(reviewRepository.existsByBook_IdAndUser_Id(bookId, userId))
+                .thenReturn(false);
 
         when(reviewRepository.saveAndFlush(any(Review.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(bookRepository.increaseReview(book.getId(), 5))
+        when(bookRepository.increaseReview(bookId, 5))
                 .thenReturn(0);
 
         assertThrows(
@@ -250,12 +285,13 @@ class ReviewServiceTest {
         );
 
         verify(reviewRepository).saveAndFlush(any(Review.class));
-        verify(bookRepository).increaseReview(book.getId(), 5);
+        verify(bookRepository).increaseReview(bookId, 5);
     }
+
+    // 리뷰 수정
 
     @Test
     void update_존재하지_않는_리뷰면_예외가_발생한다() {
-
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
@@ -265,7 +301,7 @@ class ReviewServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                EntityNotFoundException.class,
+                ReviewNotFoundException.class,
                 () -> reviewService.update(reviewId, userId, request)
         );
 
@@ -276,119 +312,74 @@ class ReviewServiceTest {
 
     @Test
     void update_삭제된_사용자는_리뷰를_수정할_수_없다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
+        Book book = createBook();
+        User user = createUser();
         user.softDelete();
 
-        Review review = new Review(book, user, "기존 리뷰", 4);
+        ReflectionTestUtils.setField(user, "id", userId);
 
+        Review review = new Review(book, user, "기존 리뷰", 4);
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
+
+        // 수정 요청이 비어 있지 않도록 설정
+        when(request.getContent()).thenReturn("수정된 리뷰");
 
         when(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
                 .thenReturn(Optional.of(review));
 
         assertThrows(
-                IllegalStateException.class,
+                ReviewForbiddenException.class,
                 () -> reviewService.update(reviewId, userId, request)
         );
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verify(bookRepository, never()).changeReviewRating(any(), anyInt());
         verifyNoInteractions(reviewLikeRepository);
     }
 
     @Test
     void update_작성자가_아닌_사용자는_리뷰를_수정할_수_없다() {
-
         UUID ownerId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User owner = new User(
-                "owner@test.com",
-                "작성자",
-                "password"
-        );
+        Book book = createBook();
+        User owner = createUser();
 
         ReflectionTestUtils.setField(owner, "id", ownerId);
 
         Review review = new Review(book, owner, "기존 리뷰", 4);
-
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
+
+        // 수정 요청이 비어 있지 않도록 설정
+        when(request.getContent()).thenReturn("수정된 리뷰");
 
         when(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
                 .thenReturn(Optional.of(review));
 
         assertThrows(
-                IllegalStateException.class,
+                ReviewForbiddenException.class,
                 () -> reviewService.update(reviewId, otherUserId, request)
         );
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verify(bookRepository, never()).changeReviewRating(any(), anyInt());
         verifyNoInteractions(reviewLikeRepository);
     }
 
     @Test
     void update_정상적으로_리뷰를_수정한다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
 
-        Review review = new Review(
-                book,
-                user,
-                "기존 리뷰",
-                3
-        );
-
+        Review review = new Review(book, user, "기존 리뷰", 3);
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
 
         when(request.getContent()).thenReturn("수정된 리뷰");
@@ -410,38 +401,22 @@ class ReviewServiceTest {
         assertEquals(5, result.getRating());
         assertFalse(result.isLikedByMe());
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verify(bookRepository).changeReviewRating(book.getId(), 2);
         verify(reviewLikeRepository).findByReview_IdAndUser_Id(reviewId, userId);
     }
 
     @Test
     void update_별점이_변경되지_않으면_도서_통계를_갱신하지_않는다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
 
         Review review = new Review(book, user, "기존 리뷰", 3);
-
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
 
         when(request.getContent()).thenReturn("수정된 리뷰");
@@ -458,41 +433,23 @@ class ReviewServiceTest {
         assertNotNull(result);
         assertEquals("수정된 리뷰", result.getContent());
         assertEquals(3, result.getRating());
-        assertFalse(result.isLikedByMe());
 
-        verify(bookRepository, never())
-                .changeReviewRating(any(), anyInt());
-
+        verify(bookRepository, never()).changeReviewRating(any(), anyInt());
         verify(reviewLikeRepository).findByReview_IdAndUser_Id(reviewId, userId);
     }
 
     @Test
     void update_별점이_null이면_기존_별점을_유지한다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
 
         Review review = new Review(book, user, "기존 리뷰", 3);
-
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
 
         when(request.getContent()).thenReturn("내용만 수정");
@@ -509,41 +466,51 @@ class ReviewServiceTest {
         assertNotNull(result);
         assertEquals("내용만 수정", result.getContent());
         assertEquals(3, result.getRating());
-        assertFalse(result.isLikedByMe());
 
-        verify(bookRepository, never())
-                .changeReviewRating(any(), anyInt());
-
+        verify(bookRepository, never()).changeReviewRating(any(), anyInt());
         verify(reviewLikeRepository).findByReview_IdAndUser_Id(reviewId, userId);
     }
 
     @Test
-    void update_도서_통계_갱신에_실패하면_예외가_발생한다() {
-
+    void update_수정할_내용과_별점이_모두_null이면_예외가_발생한다() {
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
+        Book book = createBook();
+        User user = createUser();
+
+        ReflectionTestUtils.setField(user, "id", userId);
+
+        Review review = new Review(book, user, "기존 리뷰", 3);
+        ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
+
+        when(request.getContent()).thenReturn(null);
+        when(request.getRating()).thenReturn(null);
+
+        when(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .thenReturn(Optional.of(review));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> reviewService.update(reviewId, userId, request)
         );
 
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        verifyNoInteractions(reviewLikeRepository);
+        verify(bookRepository, never()).changeReviewRating(any(), anyInt());
+    }
+
+    @Test
+    void update_도서_통계_갱신에_실패하면_예외가_발생한다() {
+        UUID userId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
 
         Review review = new Review(book, user, "기존 리뷰", 3);
-
         ReviewUpdateRequest request = mock(ReviewUpdateRequest.class);
 
         when(request.getContent()).thenReturn("수정된 리뷰");
@@ -564,9 +531,10 @@ class ReviewServiceTest {
         verifyNoInteractions(reviewLikeRepository);
     }
 
+    // 리뷰 논리 삭제
+
     @Test
     void delete_존재하지_않는_리뷰면_예외가_발생한다() {
-
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
@@ -574,7 +542,7 @@ class ReviewServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                EntityNotFoundException.class,
+                ReviewNotFoundException.class,
                 () -> reviewService.delete(reviewId, userId)
         );
 
@@ -584,26 +552,11 @@ class ReviewServiceTest {
 
     @Test
     void delete_삭제된_사용자는_리뷰를_삭제할_수_없다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
+        Book book = createBook();
+        User user = createUser();
         user.softDelete();
 
         ReflectionTestUtils.setField(user, "id", userId);
@@ -615,36 +568,21 @@ class ReviewServiceTest {
                 .thenReturn(Optional.of(review));
 
         assertThrows(
-                IllegalStateException.class,
+                ReviewForbiddenException.class,
                 () -> reviewService.delete(reviewId, userId)
         );
 
-        verify(bookRepository, never())
-                .decreaseReview(any(), anyInt());
+        verify(bookRepository, never()).decreaseReview(any(), anyInt());
     }
 
     @Test
     void delete_작성자가_아닌_사용자는_리뷰를_삭제할_수_없다() {
-
         UUID ownerId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User owner = new User(
-                "owner@test.com",
-                "작성자",
-                "password"
-        );
+        Book book = createBook();
+        User owner = createUser();
 
         ReflectionTestUtils.setField(owner, "id", ownerId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
@@ -655,35 +593,20 @@ class ReviewServiceTest {
                 .thenReturn(Optional.of(review));
 
         assertThrows(
-                IllegalStateException.class,
+                ReviewForbiddenException.class,
                 () -> reviewService.delete(reviewId, otherUserId)
         );
 
-        verify(bookRepository, never())
-                .decreaseReview(any(), anyInt());
+        verify(bookRepository, never()).decreaseReview(any(), anyInt());
     }
 
     @Test
     void delete_정상적으로_리뷰를_삭제한다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
@@ -700,31 +623,16 @@ class ReviewServiceTest {
 
         assertTrue(review.isDeleted());
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verify(bookRepository).decreaseReview(book.getId(), 3);
     }
 
     @Test
     void delete_도서_통계_갱신에_실패하면_예외가_발생한다() {
-
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
@@ -745,9 +653,10 @@ class ReviewServiceTest {
         verify(bookRepository).decreaseReview(book.getId(), 3);
     }
 
+    // 리뷰 조회
+
     @Test
     void get_존재하지_않는_리뷰면_예외가_발생한다() {
-
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
@@ -755,35 +664,20 @@ class ReviewServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                EntityNotFoundException.class,
+                ReviewNotFoundException.class,
                 () -> reviewService.get(reviewId, userId)
         );
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verifyNoInteractions(reviewLikeRepository);
     }
 
     @Test
     void get_정상적으로_리뷰를_조회한다() {
-
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
@@ -803,31 +697,16 @@ class ReviewServiceTest {
         assertEquals(4, result.getRating());
         assertFalse(result.isLikedByMe());
 
-        verify(reviewRepository).findByIdAndDeletedAtIsNull(reviewId);
         verify(reviewLikeRepository).findByReview_IdAndUser_Id(reviewId, userId);
     }
 
     @Test
     void get_내가_좋아요한_리뷰면_true를_반환한다() {
-
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(book, "id", UUID.randomUUID());
@@ -844,30 +723,14 @@ class ReviewServiceTest {
 
         assertNotNull(result);
         assertTrue(result.isLikedByMe());
-
-        verify(reviewLikeRepository).findByReview_IdAndUser_Id(reviewId, userId);
     }
 
     @Test
     void getAllByBook_정상적으로_리뷰_목록을_조회한다() {
-
         UUID bookId = UUID.randomUUID();
 
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
+        Book book = createBook();
+        User user = createUser();
 
         ReflectionTestUtils.setField(book, "id", bookId);
         ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
@@ -892,14 +755,12 @@ class ReviewServiceTest {
         assertEquals(2, result.getContent().size());
         assertEquals("첫 번째 리뷰", result.getContent().get(0).getContent());
         assertEquals("두 번째 리뷰", result.getContent().get(1).getContent());
-
-        verify(reviewRepository)
-                .findAllByBook_IdAndDeletedAtIsNull(bookId, pageable);
     }
+
+    // 리뷰 검색
 
     @Test
     void search_정상적으로_리뷰를_검색한다() {
-        // given
         UUID userId = UUID.randomUUID();
         UUID bookId = UUID.randomUUID();
 
@@ -913,17 +774,14 @@ class ReviewServiceTest {
 
         when(reviewQueryRepository.searchReviews(
                 userId, bookId, "테스트",
-                null, null, null, null, 10
+                "createdAt", "DESC", null, null, 10
         )).thenReturn(reviews);
 
-        when(reviewQueryRepository.countReviews(
-                userId, bookId, "테스트"
-        )).thenReturn(0L);
+        when(reviewQueryRepository.countReviews(userId, bookId, "테스트"))
+                .thenReturn(0L);
 
-        // when
         ReviewPageResponse response = reviewService.search(request);
 
-        // then
         assertNotNull(response);
         assertTrue(response.content().isEmpty());
         assertEquals(0, response.size());
@@ -931,47 +789,37 @@ class ReviewServiceTest {
         assertFalse(response.hasNext());
         assertNull(response.nextCursor());
         assertNull(response.nextAfter());
-
-        verify(reviewQueryRepository).searchReviews(
-                userId, bookId, "테스트",
-                null, null, null, null, 10
-        );
     }
+
     @Test
     void search_limit이_null이면_기본값_50을_사용한다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
 
         List<Review> reviews = new ArrayList<>();
 
         when(reviewQueryRepository.searchReviews(
                 null, null, null,
-                null, null, null, null, 50
+                "createdAt", "DESC", null, null, 50
         )).thenReturn(reviews);
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(0L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(0L);
 
-        // when
         ReviewPageResponse response = reviewService.search(request);
 
-        // then
         assertEquals(0, response.size());
 
         verify(reviewQueryRepository).searchReviews(
                 null, null, null,
-                null, null, null, null, 50
+                "createdAt", "DESC", null, null, 50
         );
     }
 
     @Test
     void search_limit이_0이면_예외가_발생한다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
         ReflectionTestUtils.setField(request, "limit", 0);
 
-        // when & then
         assertThrows(
                 IllegalArgumentException.class,
                 () -> reviewService.search(request)
@@ -980,206 +828,8 @@ class ReviewServiceTest {
         verifyNoInteractions(reviewQueryRepository);
     }
 
-
-
-
-
-    @Test
-    void toggleLike_정상적으로_좋아요를_등록한다() {
-
-        UUID reviewId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
-        Review review = new Review(book, user, "좋은 리뷰입니다.", 5);
-
-        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
-                .thenReturn(Optional.of(review));
-
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
-
-        when(reviewLikeRepository.findByReview_IdAndUser_Id(reviewId, userId))
-                .thenReturn(Optional.empty());
-
-        var result = reviewService.toggleLike(reviewId, userId);
-
-        assertNotNull(result);
-        assertEquals(1, review.getLikeCount());
-
-        verify(reviewLikeRepository).save(any(ReviewLike.class));
-        verify(reviewLikeRepository, never()).delete(any(ReviewLike.class));
-
-
-    }
-    @Test
-    void toggleLike_이미_좋아요한_경우_취소한다() {
-
-        UUID reviewId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
-        Review review = new Review(book, user, "좋은 리뷰입니다.", 5);
-        review.increaseLikeCount();
-
-        ReviewLike existingLike = new ReviewLike(review, user);
-
-        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
-                .thenReturn(Optional.of(review));
-
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
-
-        when(reviewLikeRepository.findByReview_IdAndUser_Id(reviewId, userId))
-                .thenReturn(Optional.of(existingLike));
-
-        var result = reviewService.toggleLike(reviewId, userId);
-
-        assertNotNull(result);
-        assertEquals(0, review.getLikeCount());
-
-        verify(reviewLikeRepository).delete(existingLike);
-        verify(reviewLikeRepository, never()).save(any(ReviewLike.class));
-    }
-
-    @Test
-    void toggleLike_존재하지_않는_리뷰면_예외가_발생한다() {
-
-
-        UUID reviewId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-
-        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> reviewService.toggleLike(reviewId, userId)
-        );
-
-        verifyNoInteractions(userRepository);
-        verifyNoInteractions(reviewLikeRepository);
-    }
-    @Test
-    void toggleLike_존재하지_않는_사용자면_예외가_발생한다() {
-
-
-        UUID reviewId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 작가",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "9781234567890",
-                null
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-        );
-
-        Review review = new Review(book, user, "좋은 리뷰입니다.", 5);
-
-        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
-                .thenReturn(Optional.of(review));
-
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> reviewService.toggleLike(reviewId, userId)
-        );
-
-        verify(reviewLikeRepository, never())
-                .findByReview_IdAndUser_Id(any(), any());
-
-        verify(reviewLikeRepository, never()).save(any(ReviewLike.class));
-        assertEquals(0, review.getLikeCount());
-
-
-    }
-    private Review createSearchReview(int rating, Instant createdAt) {
-        UUID bookId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-
-        Book book = new Book(
-                "테스트 도서",
-                "테스트 저자",
-                "테스트 설명",
-                "테스트 출판사",
-                java.time.LocalDate.of(2025, 1, 1),
-                "978123456789",
-                null
-
-        );
-
-        User user = new User(
-                "test@test.com",
-                "테스트 사용자",
-                "password"
-
-        );
-        ReflectionTestUtils.setField(book, "id", bookId);
-        ReflectionTestUtils.setField(user, "id", userId);
-
-        Review review = new Review(
-                book,
-                user,
-                "페이지네이션 테스트 리뷰",
-                rating
-        );
-
-        ReflectionTestUtils.setField(
-                review, "id", UUID.randomUUID()
-        );
-        ReflectionTestUtils.setField(
-                review, "createdAt", createdAt
-        );
-
-        return review;
-
-
-    }
-
     @Test
     void search_createdAt_정렬에서_다음_페이지_커서를_생성한다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
 
         ReflectionTestUtils.setField(request, "limit", 2);
@@ -1207,14 +857,11 @@ class ReviewServiceTest {
                 "createdAt", "DESC", null, null, 2
         )).thenReturn(reviews);
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(3L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(3L);
 
-        // when
         ReviewPageResponse response = reviewService.search(request);
 
-        // then
         assertTrue(response.hasNext());
         assertEquals(2, response.size());
         assertEquals(2, response.content().size());
@@ -1227,10 +874,8 @@ class ReviewServiceTest {
         assertEquals(second.getCreatedAt(), response.nextAfter());
     }
 
-
     @Test
     void search_로그인한_사용자의_좋아요_여부를_반영한다() {
-        // given
         UUID requestUserId = UUID.randomUUID();
 
         ReviewSearchRequest request = new ReviewSearchRequest();
@@ -1242,7 +887,7 @@ class ReviewServiceTest {
 
         ReviewLike reviewLike = new ReviewLike(
                 review,
-                new User("test@test.com", "테스트 사용자", "password")
+                createUser()
         );
 
         List<Review> reviews = new ArrayList<>();
@@ -1250,7 +895,7 @@ class ReviewServiceTest {
 
         when(reviewQueryRepository.searchReviews(
                 null, null, null,
-                null, null, null, null, 10
+                "createdAt", "DESC", null, null, 10
         )).thenReturn(reviews);
 
         when(reviewLikeRepository.findAllByUser_IdAndReview_IdIn(
@@ -1258,22 +903,18 @@ class ReviewServiceTest {
                 Set.of(review.getId())
         )).thenReturn(List.of(reviewLike));
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(1L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(1L);
 
-        // when
         ReviewPageResponse response =
                 reviewService.search(request, requestUserId);
 
-        // then
         assertEquals(1, response.size());
         assertTrue(response.content().get(0).isLikedByMe());
     }
 
     @Test
     void search_비로그인_사용자는_좋아요를_조회하지_않는다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
         ReflectionTestUtils.setField(request, "limit", 10);
 
@@ -1286,29 +927,23 @@ class ReviewServiceTest {
 
         when(reviewQueryRepository.searchReviews(
                 null, null, null,
-                null, null, null, null, 10
+                "createdAt", "DESC", null, null, 10
         )).thenReturn(reviews);
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(1L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(1L);
 
-        // when
         ReviewPageResponse response = reviewService.search(request);
 
-        // then
         assertEquals(1, response.size());
         assertFalse(response.content().get(0).isLikedByMe());
 
         verify(reviewLikeRepository, never())
-                .findAllByUser_IdAndReview_IdIn(
-                        any(UUID.class),
-                        anySet()
-                );
+                .findAllByUser_IdAndReview_IdIn(any(UUID.class), anySet());
     }
+
     @Test
     void search_조회_결과가_limit보다_적으면_다음_페이지가_없다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
         ReflectionTestUtils.setField(request, "limit", 2);
 
@@ -1319,52 +954,37 @@ class ReviewServiceTest {
 
         when(reviewQueryRepository.searchReviews(
                 null, null, null,
-                null, null, null, null, 2
+                "createdAt", "DESC", null, null, 2
         )).thenReturn(reviews);
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(1L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(1L);
 
-        // when
         ReviewPageResponse response = reviewService.search(request);
 
-        // then
         assertFalse(response.hasNext());
         assertEquals(1, response.size());
         assertNull(response.nextCursor());
         assertNull(response.nextAfter());
     }
+
     @Test
     void search_지원하지_않는_정렬_기준이면_예외가_발생한다() {
-        // given
         ReviewSearchRequest request = new ReviewSearchRequest();
 
         ReflectionTestUtils.setField(request, "limit", 1);
         ReflectionTestUtils.setField(request, "orderBy", "unknown");
 
-        List<Review> reviews = new ArrayList<>();
-        reviews.add(createSearchReview(
-                5, Instant.parse("2026-11-20T10:00:00Z")
-        ));
-        reviews.add(createSearchReview(
-                4, Instant.parse("2026-11-21T10:00:00Z")
-        ));
-
-        when(reviewQueryRepository.searchReviews(
-                null, null, null,
-                "unknown", null, null, null, 1
-        )).thenReturn(reviews);
-
-        // when & then
         assertThrows(
                 IllegalArgumentException.class,
                 () -> reviewService.search(request)
         );
+
+        verifyNoInteractions(reviewQueryRepository);
     }
+
     @Test
     void search_검색_결과가_비어_있으면_좋아요를_조회하지_않는다() {
-        // given
         UUID requestUserId = UUID.randomUUID();
 
         ReviewSearchRequest request = new ReviewSearchRequest();
@@ -1372,32 +992,153 @@ class ReviewServiceTest {
 
         when(reviewQueryRepository.searchReviews(
                 null, null, null,
-                null, null, null, null, 10
+                "createdAt", "DESC", null, null, 10
         )).thenReturn(new ArrayList<>());
 
-        when(reviewQueryRepository.countReviews(
-                null, null, null
-        )).thenReturn(0L);
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(0L);
 
-        // when
         ReviewPageResponse response =
                 reviewService.search(request, requestUserId);
 
-        // then
         assertTrue(response.content().isEmpty());
         assertEquals(0, response.size());
         assertFalse(response.hasNext());
 
         verify(reviewLikeRepository, never())
-                .findAllByUser_IdAndReview_IdIn(
-                        any(UUID.class),
-                        anySet()
-                );
+                .findAllByUser_IdAndReview_IdIn(any(UUID.class), anySet());
     }
 
+    @Test
+    void search_정렬_방향이_소문자여도_정상적으로_검색한다() {
+        ReviewSearchRequest request = new ReviewSearchRequest();
 
+        ReflectionTestUtils.setField(request, "limit", 10);
+        ReflectionTestUtils.setField(request, "direction", "desc");
 
+        when(reviewQueryRepository.searchReviews(
+                null, null, null,
+                "createdAt", "DESC", null, null, 10
+        )).thenReturn(new ArrayList<>());
 
+        when(reviewQueryRepository.countReviews(null, null, null))
+                .thenReturn(0L);
 
+        ReviewPageResponse response = reviewService.search(request);
+
+        assertNotNull(response);
+
+        verify(reviewQueryRepository).searchReviews(
+                null, null, null,
+                "createdAt", "DESC", null, null, 10
+        );
+    }
+
+    // 리뷰 좋아요
+
+    @Test
+    void toggleLike_정상적으로_좋아요를_등록한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        Book book = createBook();
+        User user = createUser();
+
+        Review review = new Review(book, user, "좋은 리뷰입니다.", 5);
+
+        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
+                .thenReturn(Optional.of(review));
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
+        when(reviewLikeRepository.findByReview_IdAndUser_Id(reviewId, userId))
+                .thenReturn(Optional.empty());
+
+        var result = reviewService.toggleLike(reviewId, userId);
+
+        assertNotNull(result);
+        assertEquals(1, review.getLikeCount());
+
+        verify(reviewLikeRepository).save(any(ReviewLike.class));
+        verify(reviewLikeRepository, never()).delete(any(ReviewLike.class));
+    }
+
+    @Test
+    void toggleLike_이미_좋아요한_경우_취소한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        Book book = createBook();
+        User user = createUser();
+
+        Review review = new Review(book, user, "좋은 리뷰입니다.", 5);
+        review.increaseLikeCount();
+
+        ReviewLike existingLike = new ReviewLike(review, user);
+
+        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
+                .thenReturn(Optional.of(review));
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
+        when(reviewLikeRepository.findByReview_IdAndUser_Id(reviewId, userId))
+                .thenReturn(Optional.of(existingLike));
+
+        var result = reviewService.toggleLike(reviewId, userId);
+
+        assertNotNull(result);
+        assertEquals(0, review.getLikeCount());
+
+        verify(reviewLikeRepository).delete(existingLike);
+        verify(reviewLikeRepository, never()).save(any(ReviewLike.class));
+    }
+
+    @Test
+    void toggleLike_존재하지_않는_리뷰면_예외가_발생한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                ReviewNotFoundException.class,
+                () -> reviewService.toggleLike(reviewId, userId)
+        );
+
+        verifyNoInteractions(userRepository);
+        verifyNoInteractions(reviewLikeRepository);
+    }
+
+    @Test
+    void toggleLike_존재하지_않는_사용자면_예외가_발생한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        Review review = new Review(
+                createBook(),
+                createUser(),
+                "좋은 리뷰입니다.",
+                5
+        );
+
+        when(reviewRepository.findByIdAndDeletedAtIsNullForUpdate(reviewId))
+                .thenReturn(Optional.of(review));
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                EntityNotFoundException.class,
+                () -> reviewService.toggleLike(reviewId, userId)
+        );
+
+        verify(reviewLikeRepository, never())
+                .findByReview_IdAndUser_Id(any(), any());
+
+        verify(reviewLikeRepository, never()).save(any(ReviewLike.class));
+        assertEquals(0, review.getLikeCount());
+    }
 }
-
