@@ -12,6 +12,7 @@ import com.example.sb15deokhugamteam1.exception.book.DuplicateIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.InvalidIsbnException;
 import com.example.sb15deokhugamteam1.exception.book.IsbnNotRecognizedException;
 import com.example.sb15deokhugamteam1.exception.book.OcrFailedException;
+import com.example.sb15deokhugamteam1.exception.book.ThumbnailUploadException;
 import com.example.sb15deokhugamteam1.service.BookInfoService;
 import com.example.sb15deokhugamteam1.service.BookService;
 import com.example.sb15deokhugamteam1.service.IsbnOcrService;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -79,7 +81,7 @@ class BookControllerTest {
     @Test
     void 등록_성공하면_201() throws Exception {
         UUID id = UUID.randomUUID();
-        given(bookService.create(any())).willReturn(dto(id));
+        given(bookService.create(any(), any())).willReturn(dto(id));
 
         mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
                 .andExpect(status().isCreated())
@@ -95,7 +97,7 @@ class BookControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_01"))
                 .andExpect(jsonPath("$.details.title").exists());
-        verify(bookService, never()).create(any());
+        verify(bookService, never()).create(any(), any());
     }
 
     @Test
@@ -106,12 +108,12 @@ class BookControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_01"))
                 .andExpect(jsonPath("$.details.title").exists());
-        verify(bookService, never()).create(any());
+        verify(bookService, never()).create(any(), any());
     }
 
     @Test
     void ISBN이_중복이면_409() throws Exception {
-        given(bookService.create(any())).willThrow(new DuplicateIsbnException("9788966260959"));
+        given(bookService.create(any(), any())).willThrow(new DuplicateIsbnException("9788966260959"));
 
         mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
                 .andExpect(status().isConflict())
@@ -145,7 +147,7 @@ class BookControllerTest {
 
     @Test
     void ISBN_형식이_틀리면_400과_BOOK_03() throws Exception {
-        given(bookService.create(any())).willThrow(new InvalidIsbnException("123"));
+        given(bookService.create(any(), any())).willThrow(new InvalidIsbnException("123"));
 
         mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
                 .andExpect(status().isBadRequest())
@@ -206,11 +208,32 @@ class BookControllerTest {
     @Test
     void 수정은_multipart_PATCH로_받는다() throws Exception {
         UUID id = UUID.randomUUID();
-        given(bookService.update(eq(id), any())).willReturn(dto(id));
+        given(bookService.update(eq(id), any(), any())).willReturn(dto(id));
 
         mockMvc.perform(multipart(HttpMethod.PATCH, "/api/books/{bookId}", id).file(bookData(VALID_JSON)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("클린 코드"));
+    }
+
+    @Test
+    void 등록할_때_표지_이미지를_서비스에_넘긴다() throws Exception {
+        UUID id = UUID.randomUUID();
+        MockMultipartFile image = new MockMultipartFile("thumbnailImage", "cover.png", "image/png", new byte[]{1, 2});
+        given(bookService.create(any(), any())).willReturn(dto(id));
+
+        mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)).file(image))
+                .andExpect(status().isCreated());
+
+        verify(bookService).create(any(), argThat(f -> f != null && "cover.png".equals(f.getOriginalFilename())));
+    }
+
+    @Test
+    void 표지_저장이_실패하면_502_BOOK_11() throws Exception {
+        given(bookService.create(any(), any())).willThrow(new ThumbnailUploadException(new RuntimeException("s3 down")));
+
+        mockMvc.perform(multipart("/api/books").file(bookData(VALID_JSON)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("BOOK_11"));
     }
 
     @Test
