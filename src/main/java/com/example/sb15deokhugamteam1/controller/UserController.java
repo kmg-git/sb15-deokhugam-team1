@@ -43,4 +43,22 @@ public class UserController {
     ) {
         return ResponseEntity.ok(userService.update(userId, requestUserId, updateRequest));
     }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> softDelete(
+            @PathVariable UUID userId,
+            @RequestHeader("Deokhugam-Request-User-ID") UUID requestUserId
+    ) {
+        userService.softDelete(userId, requestUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{userId}/hard")
+    public ResponseEntity<Void> hardDelete(
+            @PathVariable UUID userId,
+            @RequestHeader("Deokhugam-Request-User-ID") UUID requestUserId
+    ) {
+        userService.hardDelete(userId, requestUserId);
+        return ResponseEntity.noContent().build();
+    }
 }
