@@ -70,7 +70,7 @@ public class NotificationServiceTest {
         Notification notification = captureSaved();
         assertThat(notification.getUser()).isSameAs(author);
         assertThat(notification.getReview()).isSameAs(review);
-        assertThat(notification.getMessage()).isEqualTo("닉네임님이 리뷰를 좋아합니다.");
+        assertThat(notification.getMessage()).isEqualTo("닉네임님이 나의 리뷰를 좋아합니다.");
         assertThat(notification.getConfirmed()).isFalse();
     }
 
@@ -84,7 +84,7 @@ public class NotificationServiceTest {
         Notification notification = captureSaved();
         assertThat(notification.getUser()).isSameAs(author);
         assertThat(notification.getReview()).isSameAs(review);
-        assertThat(notification.getMessage()).isEqualTo("닉네임님이 리뷰에 댓글을 남겼습니다.");
+        assertThat(notification.getMessage()).isEqualTo("닉네임님이 나의 리뷰에 댓글을 남겼습니다.");
         assertThat(notification.getConfirmed()).isFalse();
     }
 
