@@ -22,7 +22,7 @@ public class NotificationExceptionTest {
 
         NotificationNotFoundException exception = new NotificationNotFoundException(notificationId);
 
-        assertThat(exception.getErrorCode().getStatus().equals(HttpStatus.NOT_FOUND));
+        assertThat(exception.getErrorCode().getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(exception.getErrorCode().getCode()).isEqualTo(NOT_FOUND_CODE);
         assertThat(exception.getDetails()).containsEntry("notificationId", notificationId);
     }
