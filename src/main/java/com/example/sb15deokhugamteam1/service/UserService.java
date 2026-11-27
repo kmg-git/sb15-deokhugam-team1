@@ -78,4 +78,31 @@ public class UserService {
 
         return UserMapper.toDto(user);
     }
+
+    @Transactional
+    public void softDelete(UUID userId, UUID requestUserId) {
+        // 본인만 삭제할 수 있다.
+        if (!userId.equals(requestUserId)) {
+            throw new UserForbiddenException(userId);
+        }
+
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        user.softDelete();
+    }
+
+    @Transactional
+    public void hardDelete(UUID userId, UUID requestUserId) {
+        // 본인만 삭제할 수 있다.
+        if (!userId.equals(requestUserId)) {
+            throw new UserForbiddenException(userId);
+        }
+
+        // 논리 삭제된 유저를 찾아야 하므로
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        userRepository.delete(user);
+    }
 }
