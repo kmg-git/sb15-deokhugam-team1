@@ -1,3 +1,4 @@
+
 package com.example.sb15deokhugamteam1.repository;
 
 import com.example.sb15deokhugamteam1.entity.Review;
@@ -9,13 +10,10 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-
 import java.util.Optional;
 import java.util.UUID;
 
-
-
-public interface ReviewRepository extends JpaRepository<Review, UUID>{
+public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     //todo  댓글 서비스에서 임시로 사용중, 나중에 교체할 것
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -37,9 +35,9 @@ public interface ReviewRepository extends JpaRepository<Review, UUID>{
             Pageable pageable
     );
 
-    // 좋아요 처리를 위한 리뷰 쓰기 잠금 조회
-    @Lock(LockModeType.WRITE)
-    @Query("SELECT r from  Review r WHERE r.id = :reviewId AND r.deletedAt IS NULL")
+    // 좋아요 처리를 위한 리뷰 비관적 쓰기 잠금 조회
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Review r WHERE r.id = :reviewId AND r.deletedAt IS NULL")
     Optional<Review> findByIdAndDeletedAtIsNullForUpdate(
             @Param("reviewId") UUID reviewId
     );

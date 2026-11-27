@@ -1,5 +1,7 @@
 package com.example.sb15deokhugamteam1.service;
 
+import java.util.Optional;
+
 /**
  * 파일 맨 앞 몇 바이트(시그니처)로 진짜 이미지인지 확인한다
  * Content-Type 은 보내는 쪽이 마음대로 적을 수 있어서 믿을 수 없다
@@ -19,6 +21,19 @@ final class ImageSignature {
                 || startsWith(b, 'M', 'M', 0x00, 0x2A)             // TIFF (모토로라)
                 || (startsWith(b, 'R', 'I', 'F', 'F') && b.length >= 12
                     && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P'); // WEBP
+    }
+
+    /**
+     * 표지용(브라우저 표시 가능) 형식이면 확장자 반환: jpg, png, gif, webp
+     * BMP·TIFF 는 브라우저 미지원 가능성 → 표지로 미허용
+     */
+    static Optional<String> webImageExtension(byte[] b) {
+        if (startsWith(b, 0xFF, 0xD8, 0xFF)) return Optional.of("jpg");
+        if (startsWith(b, 0x89, 'P', 'N', 'G')) return Optional.of("png");
+        if (startsWith(b, 'G', 'I', 'F', '8')) return Optional.of("gif");
+        if (startsWith(b, 'R', 'I', 'F', 'F') && b.length >= 12
+                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') return Optional.of("webp");
+        return Optional.empty();
     }
 
     private static boolean startsWith(byte[] bytes, int... prefix) {
