@@ -13,16 +13,18 @@ import com.example.sb15deokhugamteam1.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -170,6 +172,74 @@ public class UserServiceTest {
         given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.update(userId, userId, new UserUpdateRequest("newnick")))
+                .isInstanceOf(UserNotFoundException.class);
+    }
+
+    /** 논리 삭제 테스트 **/
+
+    @Test
+    @DisplayName(value = "삭제할 때 본인이면 논리 삭제 허용")
+    void soft_delete_success() {
+        UUID userId = UUID.randomUUID();
+        User user = new User("test@test.com", "seok0630", "hashed");
+        given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.of(user));
+
+        userService.softDelete(userId, userId);
+
+        assertThat(user.isDeleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName(value = "남의 계정을 논리 삭제하면 예외")
+    void soft_delete_forbidden() {
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.softDelete(userId, otherUserId))
+                .isInstanceOf(UserForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName(value = "없는 유저를 논리 삭제하면 예외")
+    void soft_delete_not_found() {
+        UUID userId = UUID.randomUUID();
+        given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.softDelete(userId, userId))
+                .isInstanceOf(UserNotFoundException.class);
+    }
+
+    /** 물리 삭제 테스트 **/
+
+    @Test
+    @DisplayName(value = "본인이면 물리 삭제된다")
+    void hard_delete_success() {
+        UUID userId = UUID.randomUUID();
+        User user = new User("test@test.com", "seok0630", "hashed");
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        userService.hardDelete(userId, userId);
+
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    @DisplayName(value = "남의 계정을 물리 삭제하면 예외")
+    void hard_delete_forbidden() {
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> userService.hardDelete(userId, otherUserId))
+                .isInstanceOf(UserForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName(value = "없는 유저를 물리 삭제하면 예외")
+    void hard_delete_not_found() {
+        UUID userId = UUID.randomUUID();
+        given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.hardDelete(userId, userId))
                 .isInstanceOf(UserNotFoundException.class);
     }
 }
