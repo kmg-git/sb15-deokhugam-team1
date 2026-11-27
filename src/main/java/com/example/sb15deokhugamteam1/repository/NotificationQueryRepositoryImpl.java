@@ -28,12 +28,12 @@ public class NotificationQueryRepositoryImpl implements NotificationQueryReposit
         StringBuilder jpql = new StringBuilder()
                 .append("select new ").append(NotificationDto.class.getName())
                 .append("(n.id, n.user.id, n.review.id, r.content, n.message, n.confirmed, ")
-                .append("n.createAt, n.updatedAt) ")
+                .append("n.createdAt, n.updatedAt) ")
                 .append("from Notification n join n.review r ")
                 .append("where n.user.id = :userId");
 
         if (hasCursor) {
-            jpql.append(" and (n.createAt ").append(operator).append(" :after").append(" or (n.createdAt = :after and n.id ")
+            jpql.append(" and (n.createdAt ").append(operator).append(" :after").append(" or (n.createdAt = :after and n.id ")
                     .append(operator).append(":cursorId))");}
             jpql.append(" order by n.createdAt ").append(order).append(", n.id ").append(order);
 
