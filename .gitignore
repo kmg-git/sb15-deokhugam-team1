@@ -6,6 +6,9 @@ build/
 !**/src/test/**/build/
 .env
 
+### 로컬 표지 이미지 저장 폴더 ###
+uploads/
+
 ### STS ###
 .apt_generated
 .classpath

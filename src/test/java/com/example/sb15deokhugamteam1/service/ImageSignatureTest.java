@@ -35,4 +35,15 @@ class ImageSignatureTest {
         assertThat(ImageSignature.isSupported("%PDF-1.7".getBytes(StandardCharsets.US_ASCII))).isFalse();
         assertThat(ImageSignature.isSupported("RIFF0000WAVEfmt ".getBytes(StandardCharsets.US_ASCII))).isFalse();
     }
+
+    @Test
+    void 표지용으로는_브라우저가_보여주는_형식만_확장자를_준다() {
+        assertThat(ImageSignature.webImageExtension(bytes(0xFF, 0xD8, 0xFF, 0xE0))).contains("jpg");
+        assertThat(ImageSignature.webImageExtension(bytes(0x89, 'P', 'N', 'G', 0x0D))).contains("png");
+        assertThat(ImageSignature.webImageExtension("GIF89a".getBytes(StandardCharsets.US_ASCII))).contains("gif");
+        assertThat(ImageSignature.webImageExtension("RIFF0000WEBPVP8 ".getBytes(StandardCharsets.US_ASCII))).contains("webp");
+        assertThat(ImageSignature.webImageExtension("BM....".getBytes(StandardCharsets.US_ASCII))).isEmpty();
+        assertThat(ImageSignature.webImageExtension(bytes('I', 'I', 0x2A, 0x00))).isEmpty();
+        assertThat(ImageSignature.webImageExtension("plain text".getBytes(StandardCharsets.UTF_8))).isEmpty();
+    }
 }

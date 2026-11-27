@@ -25,3 +25,10 @@ ocr-space:
   # OCR.space API 키. 깃에 올리지 말고 환경변수로만 넣는다
   api-key: ${OCR_SPACE_API_KEY:}
   base-url: https://api.ocr.space
+storage:
+  # S3_BUCKET 비어 있으면 S3 대신 로컬 폴더(local-dir)에 저장 (AWS 키 없이 개발용)
+  # AWS 키는 깃 업로드 금지, 환경변수(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)로만 설정
+  s3:
+    bucket: ${S3_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
+  local-dir: ${STORAGE_LOCAL_DIR:uploads}
