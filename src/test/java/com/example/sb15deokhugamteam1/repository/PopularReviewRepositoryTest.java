@@ -1,8 +1,6 @@
 package com.example.sb15deokhugamteam1.repository;
 
-import static org.junit.jupiter.api.Assertions.*;
 
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -125,16 +123,16 @@ class PopularReviewRepositoryTest {
         UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Period.WEEKLY, baseDate, 3L, 70.0
     );
 
-    given(popularReviewRepository.findRankingWithCursor(Period.WEEKLY, baseDate, null, firstPageable))
+    given(popularReviewRepository.findRankingWithCursorAsc(Period.WEEKLY, baseDate, null, firstPageable))
         .willReturn(List.of(review1));
-    given(popularReviewRepository.findRankingWithCursor(Period.WEEKLY, baseDate, 1L, secondPageable))
+    given(popularReviewRepository.findRankingWithCursorAsc(Period.WEEKLY, baseDate, 1L, secondPageable))
         .willReturn(List.of(review2, review3));
 
     // when
-    List<PopularReview> firstPage = popularReviewRepository.findRankingWithCursor(
+    List<PopularReview> firstPage = popularReviewRepository.findRankingWithCursorAsc(
         Period.WEEKLY, baseDate, null, firstPageable
     );
-    List<PopularReview> secondPage = popularReviewRepository.findRankingWithCursor(
+    List<PopularReview> secondPage = popularReviewRepository.findRankingWithCursorAsc(
         Period.WEEKLY, baseDate, 1L, secondPageable
     );
 

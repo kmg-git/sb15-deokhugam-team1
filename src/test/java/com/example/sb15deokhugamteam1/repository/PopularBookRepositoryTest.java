@@ -111,16 +111,16 @@ class PopularBookRepositoryTest {
     PopularBook book2 = createPopularBook(UUID.randomUUID(), "도서2", Period.DAILY, baseDate, 2L, 85.0);
     PopularBook book3 = createPopularBook(UUID.randomUUID(), "도서3", Period.DAILY, baseDate, 3L, 75.0);
 
-    given(popularBookRepository.findRankingWithCursor(Period.DAILY, baseDate, null, firstPageable))
+    given(popularBookRepository.findRankingWithCursorAsc(Period.DAILY, baseDate, null, firstPageable))
         .willReturn(List.of(book1, book2));
-    given(popularBookRepository.findRankingWithCursor(Period.DAILY, baseDate, 2L, secondPageable))
+    given(popularBookRepository.findRankingWithCursorAsc(Period.DAILY, baseDate, 2L, secondPageable))
         .willReturn(List.of(book3));
 
     // when
-    List<PopularBook> firstPage = popularBookRepository.findRankingWithCursor(
+    List<PopularBook> firstPage = popularBookRepository.findRankingWithCursorAsc(
         Period.DAILY, baseDate, null, firstPageable
     );
-    List<PopularBook> nextPage = popularBookRepository.findRankingWithCursor(
+    List<PopularBook> nextPage = popularBookRepository.findRankingWithCursorAsc(
         Period.DAILY, baseDate, 2L, secondPageable
     );
 

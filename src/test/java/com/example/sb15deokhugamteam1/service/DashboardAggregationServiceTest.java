@@ -16,7 +16,9 @@ import com.example.sb15deokhugamteam1.entity.PowerUser;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.PopularBookRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.PopularReviewRaw;
+import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.ReviewLikeCountRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserCommentCountRaw;
+import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserLikeCountRaw;
 import com.example.sb15deokhugamteam1.repository.DashboardAggregationRepository.UserReviewActivityRaw;
 import com.example.sb15deokhugamteam1.repository.PopularBookRepository;
 import com.example.sb15deokhugamteam1.repository.PopularReviewRepository;
@@ -109,7 +111,6 @@ class DashboardAggregationServiceTest {
       UUID bookId,
       UUID userId,
       String nickname,
-      long likeCount,
       long periodCommentCount,
       Instant createdAt
   ) {
@@ -155,11 +156,6 @@ class DashboardAggregationServiceTest {
       }
 
       @Override
-      public Long getLikeCount() {
-        return likeCount;
-      }
-
-      @Override
       public Long getPeriodCommentCount() {
         return periodCommentCount;
       }
@@ -176,7 +172,6 @@ class DashboardAggregationServiceTest {
       String nickname,
       Instant userCreatedAt,
       UUID reviewId,
-      long reviewLikeCount,
       long reviewPeriodCommentCount
   ) {
     return new UserReviewActivityRaw() {
@@ -198,11 +193,6 @@ class DashboardAggregationServiceTest {
       @Override
       public UUID getReviewId() {
         return reviewId;
-      }
-
-      @Override
-      public Long getReviewLikeCount() {
-        return reviewLikeCount;
       }
 
       @Override
@@ -237,6 +227,49 @@ class DashboardAggregationServiceTest {
       @Override
       public Long getCommentCount() {
         return commentCount;
+      }
+    };
+  }
+
+  private ReviewLikeCountRaw reviewLikeRaw(UUID reviewId, long likeCount) {
+    return new ReviewLikeCountRaw() {
+      @Override
+      public UUID getReviewId() {
+        return reviewId;
+      }
+
+      @Override
+      public Long getLikeCount() {
+        return likeCount;
+      }
+    };
+  }
+
+  private UserLikeCountRaw userLikeRaw(
+      UUID userId,
+      String nickname,
+      Instant userCreatedAt,
+      long likeCount
+  ) {
+    return new UserLikeCountRaw() {
+      @Override
+      public UUID getUserId() {
+        return userId;
+      }
+
+      @Override
+      public String getNickname() {
+        return nickname;
+      }
+
+      @Override
+      public Instant getUserCreatedAt() {
+        return userCreatedAt;
+      }
+
+      @Override
+      public Long getLikeCount() {
+        return likeCount;
       }
     };
   }
@@ -359,7 +392,6 @@ class DashboardAggregationServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "후순위유저",
-                2L,
                 1L,
                 Instant.parse("2026-11-24T10:00:00Z")
             ),
@@ -368,7 +400,6 @@ class DashboardAggregationServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "최고점유저",
-                4L,
                 2L,
                 Instant.parse("2026-11-24T12:00:00Z")
             ),
@@ -377,10 +408,15 @@ class DashboardAggregationServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "선순위유저",
-                2L,
                 1L,
                 Instant.parse("2026-11-24T05:00:00Z")
             )
+        ));
+    when(aggregationRepository.findPeriodReviewLikeCountsRaw(start, end))
+        .thenReturn(List.of(
+            reviewLikeRaw(laterTieReviewId, 2L),
+            reviewLikeRaw(highScoreReviewId, 4L),
+            reviewLikeRaw(earlierTieReviewId, 2L)
         ));
 
     // when
@@ -420,6 +456,7 @@ class DashboardAggregationServiceTest {
 
     UUID activeUserId = UUID.randomUUID();
     UUID commentOnlyUserId = UUID.randomUUID();
+    UUID activeReviewId = UUID.randomUUID();
 
     // activeUser: 리뷰 인기점수 (2*0.3 + 1*0.7) = 1.3 -> (1.3 * 0.5) + (2 * 0.2) + (2 * 0.3) = 1.65
     when(aggregationRepository.findUserReviewActivityRaw(start, end))
@@ -428,10 +465,19 @@ class DashboardAggregationServiceTest {
                 activeUserId,
                 "리뷰작성유저",
                 Instant.parse("2026-10-01T00:00:00Z"),
-                UUID.randomUUID(),
-                2L,
+                activeReviewId,
                 1L
             )
+        ));
+
+    // 리뷰에 달린 좋아요 2건 -> 리뷰 인기점수 계산용
+    when(aggregationRepository.findPeriodReviewLikeCountsRaw(start, end))
+        .thenReturn(List.of(reviewLikeRaw(activeReviewId, 2L)));
+
+    // activeUser가 참여한 좋아요 2건 -> 2 * 0.2 = 0.4
+    when(aggregationRepository.findUserParticipatedLikeCountsRaw(start, end))
+        .thenReturn(List.of(
+            userLikeRaw(activeUserId, "리뷰작성유저", Instant.parse("2026-10-01T00:00:00Z"), 2L)
         ));
 
     // commentOnlyUser: 댓글 3건 -> 3 * 0.3 = 0.9
