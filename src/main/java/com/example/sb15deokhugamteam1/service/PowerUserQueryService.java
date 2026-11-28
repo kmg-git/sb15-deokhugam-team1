@@ -26,24 +26,39 @@ public class PowerUserQueryService {
       Period period,
       LocalDate baseDate,
       Long cursorRank,
+      String direction,
       int size
   ) {
-    // 1. 다음 페이지 여부 확인을 위해 size + 1건 조회
-    List<PowerUser> fetched = powerUserRepository.findRankingWithCursor(
-        period,
-        baseDate,
-        cursorRank,
-        PageRequest.of(0, size + 1)
-    );
+    LocalDate targetBaseDate = (baseDate != null)
+        ? baseDate
+        : powerUserRepository.findTopByPeriodOrderByBaseDateDesc(period)
+            .map(PowerUser::getBaseDate)
+            .orElse(null);
 
-    // 2. hasNext 판별 및 페이지 크기만큼 목록 자르기
+    if (targetBaseDate == null) {
+      return new CursorPageResponsePowerUserDto(
+          List.of(),
+          null,
+          null,
+          size,
+          0L,
+          false
+      );
+    }
+
+    boolean descending = "DESC".equalsIgnoreCase(direction);
+    PageRequest pageRequest = PageRequest.of(0, size + 1);
+
+    List<PowerUser> fetched = descending
+        ? powerUserRepository.findRankingWithCursorDesc(period, targetBaseDate, cursorRank, pageRequest)
+        : powerUserRepository.findRankingWithCursorAsc(period, targetBaseDate, cursorRank, pageRequest);
+
     boolean hasNext = fetched.size() > size;
     List<PowerUser> pageEntities = hasNext ? fetched.subList(0, size) : fetched;
     List<PowerUserDto> content = pageEntities.stream()
         .map(powerUserMapper::toDto)
         .toList();
 
-    // 3. 마지막 항목 기준 다음 커서 정보 계산
     String nextCursor = null;
     Instant nextAfter = null;
     if (!pageEntities.isEmpty()) {
@@ -52,7 +67,6 @@ public class PowerUserQueryService {
       nextAfter = last.getCreatedAt();
     }
 
-    // 4. 커서 페이지 응답 DTO 조립 후 반환
     return new CursorPageResponsePowerUserDto(
         content,
         nextCursor,

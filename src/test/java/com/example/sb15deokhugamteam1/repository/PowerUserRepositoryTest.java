@@ -111,16 +111,16 @@ class PowerUserRepositoryTest {
     PowerUser user2 = createPowerUser(UUID.randomUUID(), "유저2", Period.WEEKLY, baseDate, 2L, 80.0);
     PowerUser user3 = createPowerUser(UUID.randomUUID(), "유저3", Period.WEEKLY, baseDate, 3L, 70.0);
 
-    given(powerUserRepository.findRankingWithCursor(Period.WEEKLY, baseDate, null, firstPageable))
+    given(powerUserRepository.findRankingWithCursorAsc(Period.WEEKLY, baseDate, null, firstPageable))
         .willReturn(List.of(user1));
-    given(powerUserRepository.findRankingWithCursor(Period.WEEKLY, baseDate, 1L, secondPageable))
+    given(powerUserRepository.findRankingWithCursorAsc(Period.WEEKLY, baseDate, 1L, secondPageable))
         .willReturn(List.of(user2, user3));
 
     // when
-    List<PowerUser> firstPage = powerUserRepository.findRankingWithCursor(
+    List<PowerUser> firstPage = powerUserRepository.findRankingWithCursorAsc(
         Period.WEEKLY, baseDate, null, firstPageable
     );
-    List<PowerUser> secondPage = powerUserRepository.findRankingWithCursor(
+    List<PowerUser> secondPage = powerUserRepository.findRankingWithCursorAsc(
         Period.WEEKLY, baseDate, 1L, secondPageable
     );
 

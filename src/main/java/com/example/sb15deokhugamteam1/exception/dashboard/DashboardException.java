@@ -6,7 +6,7 @@ import java.util.Map;
 
 public abstract class DashboardException extends BaseException {
 
-    protected DashboardException(DashboardErrorCode errorCode, Map<String, Object> details) {
-        super(errorCode, details);
-    }
+  protected DashboardException(DashboardErrorCode errorCode, Map<String, Object> details) {
+    super(errorCode, details);
+  }
 }

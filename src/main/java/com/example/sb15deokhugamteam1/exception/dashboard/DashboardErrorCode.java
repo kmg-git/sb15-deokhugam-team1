@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum DashboardErrorCode implements ErrorCode {
-    ;
+    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "DASHBOARD_01", "cursor 값이 올바르지 않습니다.");
 
     private final HttpStatus status;
     private final String code;

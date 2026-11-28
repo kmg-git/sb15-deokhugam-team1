@@ -1,6 +1,5 @@
 package com.example.sb15deokhugamteam1.repository;
 
-
 import com.example.sb15deokhugamteam1.entity.Period;
 import com.example.sb15deokhugamteam1.entity.PopularReview;
 import java.time.LocalDate;
@@ -9,10 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PopularReviewRepository extends JpaRepository<PopularReview, UUID> {
+
+  Optional<PopularReview> findTopByPeriodOrderByBaseDateDesc(Period period);
 
   Optional<PopularReview> findByPeriodAndBaseDateAndReviewId(
       Period period,
@@ -39,13 +41,36 @@ public interface PopularReviewRepository extends JpaRepository<PopularReview, UU
         AND (:cursorRank IS NULL OR pr.rank > :cursorRank)
       ORDER BY pr.rank ASC, pr.id ASC
       """)
-  List<PopularReview> findRankingWithCursor(
+  List<PopularReview> findRankingWithCursorAsc(
       @Param("period") Period period,
       @Param("baseDate") LocalDate baseDate,
       @Param("cursorRank") Long cursorRank,
       Pageable pageable
   );
 
-  void deleteAllByPeriodAndBaseDate(Period period, LocalDate baseDate);
+  @Query("""
+      SELECT pr
+      FROM PopularReview pr
+      WHERE pr.period = :period
+        AND pr.baseDate = :baseDate
+        AND (:cursorRank IS NULL OR pr.rank < :cursorRank)
+      ORDER BY pr.rank DESC, pr.id DESC
+      """)
+  List<PopularReview> findRankingWithCursorDesc(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate,
+      @Param("cursorRank") Long cursorRank,
+      Pageable pageable
+  );
 
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("""
+      DELETE FROM PopularReview pr
+      WHERE pr.period = :period
+        AND pr.baseDate = :baseDate
+      """)
+  void deleteAllByPeriodAndBaseDate(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate
+  );
 }

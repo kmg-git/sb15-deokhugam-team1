@@ -2,6 +2,7 @@ package com.example.sb15deokhugamteam1.entity;
 
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import lombok.Getter;
 
 import java.time.Instant;

@@ -8,10 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PopularBookRepository extends JpaRepository<PopularBook, UUID> {
+
+  Optional<PopularBook> findTopByPeriodOrderByBaseDateDesc(Period period);
 
   Optional<PopularBook> findByPeriodAndBaseDateAndBookId(
       Period period,
@@ -38,13 +41,36 @@ public interface PopularBookRepository extends JpaRepository<PopularBook, UUID> 
         AND (:cursorRank IS NULL OR pb.rank > :cursorRank)
       ORDER BY pb.rank ASC, pb.id ASC
       """)
-  List<PopularBook> findRankingWithCursor(
+  List<PopularBook> findRankingWithCursorAsc(
       @Param("period") Period period,
       @Param("baseDate") LocalDate baseDate,
       @Param("cursorRank") Long cursorRank,
       Pageable pageable
   );
 
-  void deleteAllByPeriodAndBaseDate(Period period, LocalDate baseDate);
+  @Query("""
+      SELECT pb
+      FROM PopularBook pb
+      WHERE pb.period = :period
+        AND pb.baseDate = :baseDate
+        AND (:cursorRank IS NULL OR pb.rank < :cursorRank)
+      ORDER BY pb.rank DESC, pb.id DESC
+      """)
+  List<PopularBook> findRankingWithCursorDesc(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate,
+      @Param("cursorRank") Long cursorRank,
+      Pageable pageable
+  );
 
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("""
+      DELETE FROM PopularBook pb
+      WHERE pb.period = :period
+        AND pb.baseDate = :baseDate
+      """)
+  void deleteAllByPeriodAndBaseDate(
+      @Param("period") Period period,
+      @Param("baseDate") LocalDate baseDate
+  );
 }
